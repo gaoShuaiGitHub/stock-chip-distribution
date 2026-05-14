@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>股票筹码分布</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e1a; color: #e0e0e0; padding: 20px; max-width: 1400px; margin: 0 auto; }
+.controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; background: #16213e; border-radius: 14px; padding: 12px 16px; margin-bottom: 14px; border: 1px solid #0f3460; }
+.ctrl-group { display: flex; align-items: center; gap: 6px; }
+.ctrl-label { font-size: 12px; color: #7a8ba8; font-weight: 600; }
+.ctrl-head { font-size: 11px; color: #444; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; }
+input[type=date], input[type=number], input[type=text] { background: #0f1a2e; border: 1px solid #0f3460; border-radius: 6px; color: #e0e0e0; padding: 5px 8px; font-size: 12px; outline: none; }
+input[type=date]:focus, input[type=number]:focus, input[type=text]:focus { border-color: #4488ff; }
+input[type=number] { width: 60px; }
+button { background: #1e3a6e; border: 1px solid #2a5298; color: #e0e0e0; padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
+button:hover { background: #2a5298; }
+.btn-reset { background: #1e3a3a; border-color: #2a4a4a; }
+.btn-reset:hover { background: #2a4a4a; }
+.lg { display: flex; flex-wrap: wrap; gap: 8px; }
+.li { display: flex; align-items: center; gap: 6px; cursor: pointer; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 8px; transition: all 0.2s; font-size: 13px; }
+.li:hover { background: rgba(255,255,255,0.12); }
+.li.inactive { opacity: 0.35; }
+.li.disabled { opacity: 0.2; pointer-events: none; }
+.ls { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; display: inline-block; }
+.ll { color: #ccc; }
+.lp { color: #fff; font-weight: 600; margin-left: 4px; }
+.cb { background: #16213e; border-radius: 14px; padding: 16px; margin-bottom: 14px; border: 1px solid #0f3460; }
+.ct { font-size: 13px; color: #7a8ba8; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.5px; }
+.bd { background: #51cf66; color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: 700; }
+.tt { background: rgba(0,0,0,0.35); border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; min-height: 60px; font-size: 12px; }
+.tt-date { color: #8a9bbf; font-size: 11px; margin-bottom: 6px; }
+.tt-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.tt-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; display: inline-block; }
+.tt-label { color: #aaa; width: 90px; flex-shrink: 0; }
+.tt-barbg { flex: 1; background: rgba(255,255,255,0.06); border-radius: 3px; height: 6px; }
+.tt-bar { height: 6px; border-radius: 3px; max-width: 100%; }
+.tt-pct { color: #fff; font-weight: 600; width: 40px; text-align: right; }
+.tt-price { margin-top: 6px; color: #51cf66; font-weight: 600; }
+.tt-obv { color: #a78bfa; margin-top: 4px; }
+.tt-warn { color: #fbbf24; margin-top: 6px; font-size: 11px; }
+.ab { background: #16213e; border-radius: 14px; padding: 16px; margin-bottom: 14px; border: 1px solid #0f3460; overflow-x: auto; }
+.at { font-size: 13px; color: #7a8ba8; margin-bottom: 10px; font-weight: 600; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.tbl th { color: #7a8ba8; text-align: left; padding: 6px 10px; border-bottom: 1px solid #0f3460; font-weight: 600; }
+.tbl td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color: #ccc; }
+.tbl tr:hover td { background: rgba(255,255,255,0.03); }
+.dc { background: #16213e; border-radius: 14px; padding: 16px; border: 1px solid #0f3460; font-size: 12px; line-height: 1.8; color: #7a8ba8; }
+.dc strong { color: #e0e0e0; }
+.chart-row { display: flex; align-items: stretch; gap: 14px; margin-bottom: 14px; }
+.chart-row .cb { flex: 1; margin-bottom: 0; min-height: 200px; }
+.chart-row .tt { width: 240px; flex-shrink: 0; min-height: 200px; margin: 0; }
+.chart-row canvas { width: 100%; height: 100%; }
+.error-message { color: #ff6b6b; font-size: 14px; margin-bottom: 10px; }
+</style>
+</head>
+<body>
+<div class="controls">
+  <div>
+    <div class="ctrl-head">股票代码查询</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div class="ctrl-group">
+        <span class="ctrl-label">股票代码</span>
+        <input type="text" id="stockCode" placeholder="输入股票代码（如 OKLO）" style="width:120px;">
+      </div>
+      <button onclick="loadStockData()">查询</button>
+    </div>
+  </div>
+</div>
+
+<div id="legendContainer" style="display:none;">
+  <div style="background:#16213e;border-radius:14px;padding:12px 16px;margin-bottom:14px;border:1px solid #0f3460;">
+    <div style="font-size:11px;color:#444;margin-bottom:8px;">点击图例单独查看，双击恢复全部</div>
+    <div class="lg" id="legend"></div>
+  </div>
+</div>
+
+<div id="chartContainer" style="display:none;">
+  <div class="chart-row" style="justify-content: space-between;">
+    <div class="tt" id="tt1" style="flex: 1; margin-right: 10px;"></div>
+    <div class="tt" id="tt3" style="flex: 1; margin-right: 10px;"></div>
+    <div class="tt" id="tt4" style="flex: 1;"></div>
+  </div>
+  <div class="chart-row">
+    <div class="cb">
+      <div class="ct">筹码累计分布（%） + 收盘价走势（$）<span class="bd">NEW</span></div>
+      <canvas id="c1"></canvas>
+    </div>
+  </div>
+  <div class="chart-row">
+    <div class="cb">
+      <div class="ct">OBV 能量潮</div>
+      <canvas id="c2"></canvas>
+    </div>
+    <div class="tt" id="tt2"></div>
+  </div>
+</div>
+
+<div id="guide" class="dc" style="display:none;">
+  <strong>读图指南：</strong><br>
+  <strong>主图：</strong>左轴（%）累计筹码占比，右轴（$）收盘价（灰粗线）。<br>
+  <strong>OBV 副图：</strong>能量潮，跟涨绿/跟跌红；OBV 持续上升 = 资金净流入。<br>
+  <strong>实战：</strong>看当前股价是否在「放量暴涨日收盘价」之上 若长期在之下，说明机构可能已撤退。
+</div>
+
+<script>
+// 全局变量
+var L = [];  // 日期标签
+var CP = []; // 收盘价
+var OV = []; // OBV值
+var CB = []; // 筹码分布数据 [band][date]
+var BL = []; // 价格区间标签
+var LC = []; // 颜色数组
+var NB = 10; // 区间数量
+var curBandMin = 0;
+var curBandMax = NB - 1;
+var hidden = {};
+var c1 = null;
+var c2 = null;
+
+// 颜色配置
+var COLORS = ["#ff4444","#ff9944","#ffdd44","#44dd44","#44ddaa","#4488ff","#aa44ff","#ff44ff","#ff77aa","#cc9944"];
+
+function getUrlParam(name) {
+  var urlParams = new URLSearchParams(window.location.search);
+  return urlParams.get(name);
+}
+
+function obv(data) {
+  var obvs = [];
+  var obv = 0;
+  for (var i = 0; i < data.length; i++) {
+    var cur = data[i];
+    var prev = i > 0 ? data[i-1] : cur;
+    if (cur.close > prev.close) {
+      obv += cur.volume;
+    } else if (cur.close < prev.close) {
+      obv -= cur.volume;
+    }
+    obvs.push(Math.round(obv));
+  }
+  return obvs;
+}
+
+function calculateChipDistribution(data, n_bands) {
+  var prices = [];
+  for (var i = 0; i < data.length; i++) {
+    prices.push(data[i].low, data[i].high);
+  }
+  
+  var al = Math.min(...prices);
+  var ah = Math.max(...prices);
+  var range = ah - al;
+  var bandWidth = range / n_bands;
+  
+  // 计算价格区间标签
+  BL = [];
+  for (var b = 0; b < n_bands; b++) {
+    var lower = al + b * bandWidth;
+    var upper = al + (b + 1) * bandWidth;
+    BL.push("$" + lower.toFixed(1) + "-$" + upper.toFixed(1));
+  }
+  
+  // 颜色数组
+  LC = COLORS.slice(0, n_bands);
+  
+  // 初始化筹码分布数组
+  CB = [];
+  for (var b = 0; b < n_bands; b++) {
+    CB.push([]);
+  }
+  
+  // 累计筹码数组（跨天累加）
+  var cum_total = new Array(n_bands).fill(0);
+  
+  // 计算每一天的筹码分布
+  for (var i = 0; i < data.length; i++) {
+    var bar = data[i];
+    var l = bar.low;
+    var h = bar.high;
+    var vol = bar.volume;
+    
+    // 当天各区间的成交量
+    var bands = new Array(n_bands).fill(0);
+    
+    if (h != l && vol > 0) {
+      var vp = vol / (h - l);
+      var lo = al;
+      
+      for (var b = 0; b < n_bands; b++) {
+        var hi = lo + bandWidth;
+        var ol = Math.max(lo, l);
+        var oh = Math.min(hi, h);
+        
+        if (ol < oh) {
+          bands[b] = vp * (oh - ol);
+        }
+        lo = hi;
+      }
+    }
+    
+    // 累加历史筹码（关键：累计所有历史成交量）
+    for (var b = 0; b < n_bands; b++) {
+      cum_total[b] += bands[b];
+    }
+    
+    // 计算累计筹码百分比
+    var total = cum_total.reduce(function(a, b) { return a + b; }, 0);
+    var cp = cum_total.map(function(c) { return total ? (c / total * 100) : 0; });
+    
+    for (var b = 0; b < n_bands; b++) {
+      CB[b].push(cp[b]);
+    }
+  }
+  
+  return { breaks: Array.from({length: n_bands + 1}, function(_, i) { return al + i * bandWidth; }) };
+}
+
+function updateBothPanels(idx) {
+  var li = (idx === undefined || idx < 0) ? L.length - 1 : idx;
+  var ld = L[li], lc = CP[li], obv_val = OV[li];
+  
+  // 显示前前一天的筹码分布（最左侧）
+  var li_prev2 = li - 2;
+  if (li_prev2 >= 0) {
+    var ld_prev2 = L[li_prev2], lc_prev2 = CP[li_prev2];
+    var bands_prev2 = [];
+    for (var b = curBandMin; b <= curBandMax; b++) {
+      bands_prev2.push({l: BL[b], v: CB[b][li_prev2], c: LC[b], idx: b});
+    }
+    bands_prev2.sort(function(a, b) { return a.idx - b.idx; });
+    var h_prev2 = '<div class=tt-date>' + ld_prev2 + '</div>';
+    for (var i = bands_prev2.length - 1; i >= 0; i--) {
+      var b = bands_prev2[i];
+      var pct = parseFloat(b.v).toFixed(1);
+      var w = Math.max(3, pct * 1.5);
+      h_prev2 += '<div class=tt-row><span class=tt-swatch style="background:' + b.c + '"></span><span class=tt-label>' + b.l + '</span><div class=tt-barbg><div class=tt-bar style="width:' + w + '%;background:' + b.c + '"></div></div><span class=tt-pct>' + pct + '%</span></div>';
+    }
+    h_prev2 += '<div class=tt-price>收盘: $' + parseFloat(lc_prev2).toFixed(2) + '</div>';
+    document.getElementById('tt1').innerHTML = h_prev2;
+  } else {
+    document.getElementById('tt1').innerHTML = '<div class=tt-date>无数据</div>';
+  }
+  
+  // 显示前一天的筹码分布（中间）
+  var li_prev1 = li - 1;
+  if (li_prev1 >= 0) {
+    var ld_prev1 = L[li_prev1], lc_prev1 = CP[li_prev1];
+    var bands_prev1 = [];
+    for (var b = curBandMin; b <= curBandMax; b++) {
+      bands_prev1.push({l: BL[b], v: CB[b][li_prev1], c: LC[b], idx: b});
+    }
+    bands_prev1.sort(function(a, b) { return a.idx - b.idx; });
+    var h_prev1 = '<div class=tt-date>' + ld_prev1 + '</div>';
+    for (var i = bands_prev1.length - 1; i >= 0; i--) {
+      var b = bands_prev1[i];
+      var pct = parseFloat(b.v).toFixed(1);
+      var w = Math.max(3, pct * 1.5);
+      h_prev1 += '<div class=tt-row><span class=tt-swatch style="background:' + b.c + '"></span><span class=tt-label>' + b.l + '</span><div class=tt-barbg><div class=tt-bar style="width:' + w + '%;background:' + b.c + '"></div></div><span class=tt-pct>' + pct + '%</span></div>';
+    }
+    h_prev1 += '<div class=tt-price>收盘: $' + parseFloat(lc_prev1).toFixed(2) + '</div>';
+    document.getElementById('tt3').innerHTML = h_prev1;
+  } else {
+    document.getElementById('tt3').innerHTML = '<div class=tt-date>无数据</div>';
+  }
+  
+  // 显示当天的筹码分布（最右侧）
+  var bands = [];
+  for (var b = curBandMin; b <= curBandMax; b++) {
+    bands.push({l: BL[b], v: CB[b][li], c: LC[b], idx: b});
+  }
+  bands.sort(function(a, b) { return a.idx - b.idx; });
+  var h = '<div class=tt-date>' + ld + '</div>';
+  for (var i = bands.length - 1; i >= 0; i--) {
+    var b = bands[i];
+    var pct = parseFloat(b.v).toFixed(1);
+    var w = Math.max(3, pct * 1.5);
+    h += '<div class=tt-row><span class=tt-swatch style="background:' + b.c + '"></span><span class=tt-label>' + b.l + '</span><div class=tt-barbg><div class=tt-bar style="width:' + w + '%;background:' + b.c + '"></div></div><span class=tt-pct>' + pct + '%</span></div>';
+  }
+  h += '<div class=tt-price>收盘: $' + parseFloat(lc).toFixed(2) + '</div>';
+  document.getElementById('tt4').innerHTML = h;
+  
+  // 更新OBV能量潮
+  document.getElementById('tt2').innerHTML = '<div class=tt-date>' + ld + '</div><div class=tt-obv>OBV: ' + Number(obv_val).toLocaleString() + '</div>';
+}
+
+function showChipTooltip(ctx) {
+  var M = ctx.tooltip;
+  if (M.opacity === 0) {
+    updateBothPanels(L.length - 1);
+    return;
+  }
+  var idx = (M.dataPoints && M.dataPoints[0]) ? M.dataPoints[0].dataIndex : L.length - 1;
+  updateBothPanels(idx);
+}
+
+function showObvTooltip(ctx) {
+  var M = ctx.tooltip;
+  if (M.opacity === 0) {
+    updateBothPanels(L.length - 1);
+    return;
+  }
+  var idx = (M.dataPoints && M.dataPoints[0]) ? M.dataPoints[0].dataIndex : L.length - 1;
+  updateBothPanels(idx);
+}
+
+function tk(i) {
+  var el = document.getElementById('leg' + i);
+  if (hidden[i]) {
+    delete hidden[i];
+    el.classList.remove('inactive');
+    c1.data.datasets[i].borderWidth = 1.8;
+  } else {
+    hidden[i] = true;
+    el.classList.add('inactive');
+    c1.data.datasets[i].borderWidth = 0;
+  }
+  c1.update('none');
+}
+
+function createCharts() {
+  // 创建筹码分布数据集
+  var cd_parts = [];
+  for (var i = 0; i < NB; i++) {
+    cd_parts.push({
+      label: BL[i] + ' (percent)',
+      data: CB[i],
+      borderColor: LC[i],
+      backgroundColor: 'transparent',
+      borderWidth: 1.8,
+      pointRadius: 0,
+      pointHoverRadius: 3,
+      tension: 0.25,
+      fill: false,
+      yAxisID: 'y'
+    });
+  }
+  
+  // 收盘价数据集
+  cd_parts.push({
+    label: '收盘价 ($)',
+    data: CP,
+    borderColor: '#e0e0e0',
+    backgroundColor: 'rgba(224,224,224,0.06)',
+    borderWidth: 2,
+    pointRadius: 0,
+    pointHoverRadius: 4,
+    tension: 0.25,
+    fill: true,
+    yAxisID: 'y1',
+    order: -1
+  });
+  
+  // 创建主图表 c1
+  c1 = new Chart(document.getElementById('c1'), {
+    type: 'line',
+    data: { labels: L, datasets: cd_parts },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false, external: showChipTooltip }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: { color: '#555', font: { size: 10 }, maxTicksLimit: 20 }
+        },
+        y: {
+          min: 0,
+          max: 100,
+          position: 'left',
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#777', callback: function(v) { return v + '%'; }, font: { size: 10 } },
+          title: { display: true, text: '累计筹码占比 (%)', color: '#555', font: { size: 10 } }
+        },
+        y1: {
+          position: 'right',
+          grid: { drawOnChartArea: false },
+          ticks: { color: '#aaa', font: { size: 10 } },
+          title: { display: true, text: '收盘价 ($)', color: '#aaa', font: { size: 10 } }
+        }
+      }
+    }
+  });
+  
+  // 创建OBV图表 c2
+  c2 = new Chart(document.getElementById('c2'), {
+    type: 'line',
+    data: {
+      labels: L,
+      datasets: [{
+        label: 'OBV',
+        data: OV,
+        borderColor: 'rgba(167,139,250,0.8)',
+        backgroundColor: 'rgba(167,139,250,0.05)',
+        borderWidth: 1.5,
+        pointRadius: 0,
+        pointHoverRadius: 3,
+        tension: 0.3,
+        fill: true
+      }]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: { enabled: false, external: showObvTooltip }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)' },
+          ticks: { color: '#555', font: { size: 10 }, maxTicksLimit: 20 }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.04)' },
+          ticks: { color: '#888', font: { size: 10 } },
+          title: { display: true, text: 'OBV', color: '#a78bfa', font: { size: 10 } }
+        }
+      }
+    }
+  });
+  
+  // 添加鼠标离开事件
+  document.getElementById('c1').addEventListener('mouseleave', function() { updateBothPanels(L.length - 1); });
+  document.getElementById('c2').addEventListener('mouseleave', function() { updateBothPanels(L.length - 1); });
+  
+  // 双击图例恢复全部
+  var allLegs = document.querySelectorAll('.li');
+  for (var i = 0; i < allLegs.length; i++) {
+    allLegs[i].addEventListener('dblclick', function() {
+      hidden = {};
+      var legs = document.querySelectorAll('.li');
+      for (var j = 0; j < legs.length; j++) {
+        legs[j].classList.remove('inactive');
+      }
+      for (var k = 0; k < NB; k++) {
+        c1.data.datasets[k].borderWidth = 1.8;
+      }
+      c1.update('none');
+    });
+  }
+}
+
+function updateCharts() {
+  // 更新c1
+  c1.data.labels = L;
+  for (var i = 0; i < NB; i++) {
+    c1.data.datasets[i].data = CB[i];
+    c1.data.datasets[i].label = BL[i] + ' (percent)';
+    c1.data.datasets[i].borderColor = LC[i];
+  }
+  c1.data.datasets[NB].data = CP;
+  c1.update('none');
+  
+  // 更新c2
+  c2.data.labels = L;
+  c2.data.datasets[0].data = OV;
+  c2.update('none');
+  
+  // 更新面板
+  updateBothPanels(L.length - 1);
+}
+
+function updateLegend() {
+  var legendHtml = '';
+  for (var i = NB - 1; i >= 0; i--) {
+    var latestValue = CB[i][CB[i].length - 1];
+    legendHtml += '<div class="li" id="leg' + i + '" onclick="tk(' + i + ')">' +
+                  '<span class="ls" style="background:' + LC[i] + '"></span>' +
+                  '<span class="ll">' + BL[i] + '</span>' +
+                  '<span class="lp">' + latestValue.toFixed(1) + '%</span></div>\n';
+  }
+  document.getElementById('legend').innerHTML = legendHtml;
+  
+  // 添加双击恢复事件
+  var allLegs = document.querySelectorAll('.li');
+  for (var i = 0; i < allLegs.length; i++) {
+    allLegs[i].addEventListener('dblclick', function() {
+      hidden = {};
+      var legs = document.querySelectorAll('.li');
+      for (var j = 0; j < legs.length; j++) {
+        legs[j].classList.remove('inactive');
+      }
+      for (var k = 0; k < NB; k++) {
+        if (c1 && c1.data && c1.data.datasets[k]) {
+          c1.data.datasets[k].borderWidth = 1.8;
+        }
+      }
+      if (c1) c1.update('none');
+    });
+  }
+}
+
+function loadStockData() {
+  var symbol = document.getElementById('stockCode').value.trim().toUpperCase();
+  if (!symbol) {
+    alert('请输入股票代码');
+    return;
+  }
+  
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', 'http://localhost:5555/api/data?symbol=' + symbol + '&days=365', true);
+  xhr.onload = function() {
+    if (xhr.status === 200) {
+      try {
+        var stockData = JSON.parse(xhr.responseText);
+        
+        if (!stockData || stockData.length === 0) {
+          alert('未找到股票数据');
+          return;
+        }
+        
+        // 提取数据
+        L = stockData.map(function(d) { return d.date; });
+        CP = stockData.map(function(d) { return d.close; });
+        OV = obv(stockData);
+        
+        // 计算筹码分布
+        NB = 10;
+        calculateChipDistribution(stockData, NB);
+        curBandMin = 0;
+        curBandMax = NB - 1;
+        hidden = {};
+        
+        // 更新图例
+        updateLegend();
+        document.getElementById('legendContainer').style.display = 'block';
+        document.getElementById('chartContainer').style.display = 'block';
+        document.getElementById('guide').style.display = 'block';
+        
+        // 如果图表已存在，更新数据；否则创建新图表
+        if (c1 && c2) {
+          updateCharts();
+        } else {
+          createCharts();
+        }
+        
+      } catch (e) {
+        alert('解析数据失败: ' + e.message);
+      }
+    } else {
+      alert('加载数据失败，状态码: ' + xhr.status);
+    }
+  };
+  xhr.onerror = function() {
+    alert('网络请求失败，请检查服务器是否正常运行');
+  };
+  xhr.send();
+}
+
+// 页面加载时自动读取URL参数并加载数据
+document.addEventListener('DOMContentLoaded', function() {
+  var symbol = getUrlParam('symbol');
+  if (symbol) {
+    document.getElementById('stockCode').value = symbol.toUpperCase();
+    loadStockData();
+  }
+});
+</script>
+</body>
+</html>

@@ -3,73 +3,434 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>股票筹码分布分析工具</title>
+    <title>股票筹码分布分析系统</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0e1a 0%, #16213e 100%); min-height: 100vh; color: #e0e0e0; padding: 40px 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .header { text-align: center; margin-bottom: 50px; }
-        .logo { font-size: 32px; font-weight: 700; background: linear-gradient(90deg, #4488ff, #51cf66); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px; }
-        .subtitle { color: #7a8ba8; font-size: 14px; }
-        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
-        .card { background: rgba(22, 33, 62, 0.8); border: 1px solid #0f3460; border-radius: 14px; padding: 24px; transition: transform 0.2s, box-shadow 0.2s; }
-        .card:hover { transform: translateY(-4px); box-shadow: 0 10px 40px rgba(68, 136, 255, 0.15); }
-        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #fff; }
-        .card-desc { font-size: 13px; color: #7a8ba8; margin-bottom: 16px; line-height: 1.6; }
-        .card-list { list-style: none; }
-        .card-list li { margin-bottom: 10px; }
-        .card-list a { display: inline-flex; align-items: center; gap: 8px; color: #4488ff; text-decoration: none; font-size: 14px; transition: color 0.2s; }
-        .card-list a:hover { color: #66a3ff; }
-        .card-list a::before { content: '📊'; }
-        .footer { text-align: center; margin-top: 60px; color: #5a6b8a; font-size: 12px; }
-        .method-tag { display: inline-block; background: rgba(81, 207, 102, 0.15); color: #51cf66; font-size: 11px; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 500px;
+            width: 100%;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #fff;
+            font-size: 28px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .header p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: #fff;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            border-color: #4facfe;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.2);
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.3);
+        }
+
+        .stock-info {
+            background: rgba(79, 172, 254, 0.1);
+            border-left: 3px solid #4facfe;
+            padding: 12px 15px;
+            margin-top: 10px;
+            border-radius: 0 8px 8px 0;
+            display: none;
+        }
+
+        .stock-info.show {
+            display: block;
+        }
+
+        .stock-info p {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(79, 172, 254, 0.4);
+        }
+
+        .btn:disabled {
+            background: rgba(255, 255, 255, 0.2);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .loading-overlay.show {
+            display: flex;
+        }
+
+        .loading-content {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .loading-text {
+            color: #fff;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .loading-subtext {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 14px;
+        }
+
+        .time-options {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .time-option {
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 13px;
+        }
+
+        .time-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .time-option.active {
+            background: linear-gradient(135deg, #4facfe, #00f2fe);
+            border-color: #4facfe;
+            color: #fff;
+        }
+
+        .recent-stocks {
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .recent-stocks h3 {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .stock-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .stock-tag {
+            padding: 8px 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+
+        .stock-tag:hover {
+            background: rgba(79, 172, 254, 0.2);
+            border-color: rgba(79, 172, 254, 0.5);
+        }
+
+        .error-message {
+            background: rgba(255, 100, 100, 0.1);
+            border-left: 3px solid #ff6464;
+            padding: 10px 15px;
+            margin-top: 15px;
+            border-radius: 0 8px 8px 0;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        .error-message p {
+            color: #ff6464;
+            font-size: 13px;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1 class="logo">📈 股票筹码分布分析工具</h1>
-            <p class="subtitle">Stock Chip Distribution Analysis Tool</p>
+            <h1>📊 股票筹码分布分析</h1>
+            <p>输入股票代码，获取专业的筹码分布可视化分析</p>
         </div>
-        
-        <div class="cards">
-            <div class="card">
-                <h3 class="card-title">OKLO 筹码分布</h3>
-                <p class="card-desc">OKLO 股票的多种筹码分布分析图表，包含不同计算方法的对比。</p>
-                <ul class="card-list">
-                    <li><a href="scripts/OKLO_chip.html">标准分布</a></li>
-                    <li><a href="scripts/OKLO_chip_equal_interval.html">等区间法<span class="method-tag">Equal Interval</span></a></li>
-                    <li><a href="scripts/OKLO_chip_equal_frequency.html">等频率法<span class="method-tag">Equal Frequency</span></a></li>
-                    <li><a href="scripts/OKLO_chip_logarithmic.html">对数法<span class="method-tag">Logarithmic</span></a></li>
-                    <li><a href="scripts/OKLO_chip_standard_deviation.html">标准差法<span class="method-tag">Std Dev</span></a></li>
-                    <li><a href="scripts/OKLO_chip_volume_weighted.html">成交量加权<span class="method-tag">Volume Weighted</span></a></li>
-                    <li><a href="scripts/OKLO_chip_apr16.html">4月16日快照</a></li>
-                </ul>
-            </div>
-            
-            <div class="card">
-                <h3 class="card-title">AAPL 筹码分布</h3>
-                <p class="card-desc">AAPL (苹果公司) 股票的筹码分布分析图表。</p>
-                <ul class="card-list">
-                    <li><a href="scripts/AAPL_chip.html">标准分布</a></li>
-                    <li><a href="scripts/AAPL_chip_new.html">新版分布</a></li>
-                </ul>
-            </div>
-            
-            <div class="card">
-                <h3 class="card-title">关于工具</h3>
-                <p class="card-desc">本工具用于分析股票筹码分布，帮助投资者了解持仓成本分布情况。</p>
-                <ul class="card-list">
-                    <li><a href="SKILL.md">技术文档</a></li>
-                    <li><a href="stock-chip-distribution.html">项目介绍</a></li>
-                    <li><a href="simple-chart.html">示例图表</a></li>
-                </ul>
+
+        <div class="form-group">
+            <label for="stockCode">股票代码</label>
+            <input 
+                type="text" 
+                id="stockCode" 
+                placeholder="例如: OKLO, AAPL, GOOGL"
+                autocomplete="off"
+            >
+            <div class="stock-info" id="stockInfo">
+                <p id="stockInfoText"></p>
             </div>
         </div>
-        
-        <div class="footer">
-            <p>© 2024 Stock Chip Distribution Analysis Tool</p>
+
+        <div class="form-group">
+            <label>时间范围</label>
+            <div class="time-options">
+                <div class="time-option active" data-days="30">近30天</div>
+                <div class="time-option" data-days="90">近90天</div>
+                <div class="time-option" data-days="180">近180天</div>
+                <div class="time-option" data-days="365">近1年</div>
+                <div class="time-option" data-days="730">近2年</div>
+                <div class="time-option" data-days="1095">近3年</div>
+            </div>
+        </div>
+
+        <button class="btn" id="analyzeBtn">
+            🚀 开始分析
+        </button>
+
+        <div class="error-message" id="errorMessage">
+            <p id="errorText"></p>
+        </div>
+
+        <div class="recent-stocks">
+            <h3>热门股票</h3>
+            <div class="stock-tags">
+                <div class="stock-tag" data-symbol="OKLO">OKLO</div>
+                <div class="stock-tag" data-symbol="AAPL">AAPL</div>
+                <div class="stock-tag" data-symbol="GOOGL">GOOGL</div>
+                <div class="stock-tag" data-symbol="MSFT">MSFT</div>
+                <div class="stock-tag" data-symbol="TSLA">TSLA</div>
+                <div class="stock-tag" data-symbol="NVDA">NVDA</div>
+            </div>
         </div>
     </div>
+
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">正在获取股票数据...</div>
+            <div class="loading-subtext" id="loadingSubtext">请稍候，这可能需要几秒钟</div>
+        </div>
+    </div>
+
+    <script>
+        const stockCodeInput = document.getElementById('stockCode');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const loadingText = document.getElementById('loadingText');
+        const loadingSubtext = document.getElementById('loadingSubtext');
+        const errorMessage = document.getElementById('errorMessage');
+        const errorText = document.getElementById('errorText');
+        const stockInfo = document.getElementById('stockInfo');
+        const stockInfoText = document.getElementById('stockInfoText');
+
+        let selectedDays = 30;
+
+        // 时间选项点击
+        document.querySelectorAll('.time-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.time-option').forEach(opt => opt.classList.remove('active'));
+                option.classList.add('active');
+                selectedDays = parseInt(option.dataset.days);
+            });
+        });
+
+        // 热门股票点击
+        document.querySelectorAll('.stock-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                stockCodeInput.value = tag.dataset.symbol;
+                updateStockInfo(tag.dataset.symbol);
+            });
+        });
+
+        function updateStockInfo(symbol) {
+            if (symbol) {
+                stockInfoText.textContent = `即将分析 ${symbol.toUpperCase()} 的筹码分布数据`;
+                stockInfo.classList.add('show');
+            } else {
+                stockInfo.classList.remove('show');
+            }
+        }
+
+        stockCodeInput.addEventListener('input', () => {
+            updateStockInfo(stockCodeInput.value);
+            errorMessage.classList.remove('show');
+        });
+
+        analyzeBtn.addEventListener('click', async () => {
+            const symbol = stockCodeInput.value.trim().toUpperCase();
+            
+            if (!symbol) {
+                showError('请输入股票代码');
+                return;
+            }
+
+            // 显示loading
+            showLoading('正在获取股票数据...', '正在从数据源获取最新数据');
+
+            try {
+                 // 调用Python脚本获取数据
+                 const response = await fetch('http://localhost:5555/update_data', {
+                     method: 'POST',
+                     headers: {
+                         'Content-Type': 'application/json',
+                     },
+                     body: JSON.stringify({
+                         symbol: symbol,
+                         days: selectedDays
+                     })
+                 });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    showLoading('数据获取成功...', '正在打开分析页面');
+                    
+                    // 延迟一下让用户看到成功消息
+                    setTimeout(() => {
+                        // 打开通用的筹码分布页面
+                        window.open(`scripts/stock_chip_loader.html?symbol=${symbol}`, '_blank');
+                        hideLoading();
+                    }, 500);
+                } else {
+                    hideLoading();
+                    showError(result.message || '获取数据失败');
+                }
+            } catch (error) {
+                hideLoading();
+                showError('网络错误或服务器未启动');
+            }
+        });
+
+        function showLoading(text, subtext) {
+            loadingText.textContent = text;
+            loadingSubtext.textContent = subtext;
+            loadingOverlay.classList.add('show');
+        }
+
+        function hideLoading() {
+            loadingOverlay.classList.remove('show');
+        }
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorMessage.classList.add('show');
+        }
+
+        // 支持回车键提交
+        stockCodeInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                analyzeBtn.click();
+            }
+        });
+    </script>
 </body>
 </html>

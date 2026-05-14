@@ -160,6 +160,52 @@ def get_data():
          "bs": bs
      })
 
+@app.route('/update_data', methods=['POST'])
+def update_data():
+    """获取股票数据并保存到文件，供前端加载"""
+    try:
+        data = request.get_json()
+        symbol = data.get('symbol', 'OKLO').upper()
+        days = int(data.get('days', 365))
+        proxy = data.get('proxy', 'socks5://127.0.0.1:7897')
+        
+        print(f"Updating data for {symbol}, days={days}")
+        
+        # 处理股票代码
+        sym = symbol
+        if not any(sym.endswith(x) for x in [".US", ".HK", ".SS", ".SZ"]):
+            sym += ".US"
+        
+        # 获取数据
+        stock_data = fetch_data(sym, days, proxy)
+        if not stock_data:
+            return jsonify({"success": False, "message": "获取股票数据失败"})
+        
+        # 计算OBV
+        stock_data = calculate_obv(stock_data)
+        
+        # 保存到文件
+        data_dir = os.path.join(os.path.dirname(__file__), 'scripts', 'data')
+        os.makedirs(data_dir, exist_ok=True)
+        file_name = f"{symbol.lower()}_daily.json"
+        file_path = os.path.join(data_dir, file_name)
+        
+        with open(file_path, 'w') as f:
+            json.dump(stock_data, f, indent=2)
+        
+        print(f"Data saved to {file_path}, records: {len(stock_data)}")
+        
+        return jsonify({
+            "success": True,
+            "message": f"成功获取 {len(stock_data)} 条数据",
+            "symbol": symbol,
+            "count": len(stock_data)
+        })
+        
+    except Exception as e:
+        print(f"Error in update_data: {e}")
+        return jsonify({"success": False, "message": str(e)})
+
 if __name__ == '__main__':
     print("Starting stock data API server on http://localhost:5555")
     app.run(host='0.0.0.0', port=5555, debug=True)
