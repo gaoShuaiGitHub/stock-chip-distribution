@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票筹码分布分析工具</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #0a0e1a 0%, #16213e 100%); min-height: 100vh; color: #e0e0e0; padding: 40px 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .header { text-align: center; margin-bottom: 50px; }
+        .logo { font-size: 32px; font-weight: 700; background: linear-gradient(90deg, #4488ff, #51cf66); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 12px; }
+        .subtitle { color: #7a8ba8; font-size: 14px; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+        .card { background: rgba(22, 33, 62, 0.8); border: 1px solid #0f3460; border-radius: 14px; padding: 24px; transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-4px); box-shadow: 0 10px 40px rgba(68, 136, 255, 0.15); }
+        .card-title { font-size: 16px; font-weight: 600; margin-bottom: 12px; color: #fff; }
+        .card-desc { font-size: 13px; color: #7a8ba8; margin-bottom: 16px; line-height: 1.6; }
+        .card-list { list-style: none; }
+        .card-list li { margin-bottom: 10px; }
+        .card-list a { display: inline-flex; align-items: center; gap: 8px; color: #4488ff; text-decoration: none; font-size: 14px; transition: color 0.2s; }
+        .card-list a:hover { color: #66a3ff; }
+        .card-list a::before { content: '📊'; }
+        .footer { text-align: center; margin-top: 60px; color: #5a6b8a; font-size: 12px; }
+        .method-tag { display: inline-block; background: rgba(81, 207, 102, 0.15); color: #51cf66; font-size: 11px; padding: 3px 8px; border-radius: 4px; margin-left: 8px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="logo">📈 股票筹码分布分析工具</h1>
+            <p class="subtitle">Stock Chip Distribution Analysis Tool</p>
+        </div>
+        
+        <div class="cards">
+            <div class="card">
+                <h3 class="card-title">OKLO 筹码分布</h3>
+                <p class="card-desc">OKLO 股票的多种筹码分布分析图表，包含不同计算方法的对比。</p>
+                <ul class="card-list">
+                    <li><a href="scripts/OKLO_chip.html">标准分布</a></li>
+                    <li><a href="scripts/OKLO_chip_equal_interval.html">等区间法<span class="method-tag">Equal Interval</span></a></li>
+                    <li><a href="scripts/OKLO_chip_equal_frequency.html">等频率法<span class="method-tag">Equal Frequency</span></a></li>
+                    <li><a href="scripts/OKLO_chip_logarithmic.html">对数法<span class="method-tag">Logarithmic</span></a></li>
+                    <li><a href="scripts/OKLO_chip_standard_deviation.html">标准差法<span class="method-tag">Std Dev</span></a></li>
+                    <li><a href="scripts/OKLO_chip_volume_weighted.html">成交量加权<span class="method-tag">Volume Weighted</span></a></li>
+                    <li><a href="scripts/OKLO_chip_apr16.html">4月16日快照</a></li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">AAPL 筹码分布</h3>
+                <p class="card-desc">AAPL (苹果公司) 股票的筹码分布分析图表。</p>
+                <ul class="card-list">
+                    <li><a href="scripts/AAPL_chip.html">标准分布</a></li>
+                    <li><a href="scripts/AAPL_chip_new.html">新版分布</a></li>
+                </ul>
+            </div>
+            
+            <div class="card">
+                <h3 class="card-title">关于工具</h3>
+                <p class="card-desc">本工具用于分析股票筹码分布，帮助投资者了解持仓成本分布情况。</p>
+                <ul class="card-list">
+                    <li><a href="SKILL.md">技术文档</a></li>
+                    <li><a href="stock-chip-distribution.html">项目介绍</a></li>
+                    <li><a href="simple-chart.html">示例图表</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <p>© 2024 Stock Chip Distribution Analysis Tool</p>
+        </div>
+    </div>
+</body>
+</html>
