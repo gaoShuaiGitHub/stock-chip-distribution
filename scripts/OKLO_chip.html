@@ -119,20 +119,36 @@ button:hover { background: #2a5298; }
       <button class="btn-reset" onclick="resetBands()">重置</button>
     </div>
   </div>
+  <div style="border-left:1px solid #0f3460;padding-left:12px;">
+    <div class="ctrl-head">划分方式</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div class="ctrl-group">
+        <span class="ctrl-label">方法</span>
+        <select id="distributionMethod" onchange="changeMethod()" style="background: #0f1a2e; border: 1px solid #0f3460; border-radius: 6px; color: #e0e0e0; padding: 5px 8px; font-size: 12px; outline: none;">
+          <option value="equal_interval" selected>等距划分</option>
+          <option value="equal_frequency" >等频划分</option>
+          <option value="logarithmic" >对数划分</option>
+          <option value="volume_weighted" >成交量加权划分</option>
+          <option value="standard_deviation" >标准差划分</option>
+        </select>
+      </div>
+    </div>
+  </div>
 </div>
 <div style="background:#16213e;border-radius:14px;padding:12px 16px;margin-bottom:14px;border:1px solid #0f3460;"><div style="font-size:11px;color:#444;margin-bottom:8px;">点击图例单独查看，双击恢复全部   |   异动日 = 放量>2.5倍均量 或 涨跌>8%</div><div class="lg">
-<div class="li" id="leg0" onclick="tk(0)"><span class="ls" style="background:#ff4444"></span><span class="ll">$44.9-$52.0</span><span class="lp">8.1%</span></div>
-<div class="li" id="leg1" onclick="tk(1)"><span class="ls" style="background:#ff9944"></span><span class="ll">$52.0-$59.0</span><span class="lp">8.3%</span></div>
-<div class="li" id="leg2" onclick="tk(2)"><span class="ls" style="background:#ffdd44"></span><span class="ll">$59.0-$66.1</span><span class="lp">22.5%</span></div>
-<div class="li" id="leg3" onclick="tk(3)"><span class="ls" style="background:#44dd44"></span><span class="ll">$66.1-$73.2</span><span class="lp">13.9%</span></div>
-<div class="li" id="leg4" onclick="tk(4)"><span class="ls" style="background:#44ddaa"></span><span class="ll">$73.2-$80.3</span><span class="lp">12.2%</span></div>
-<div class="li" id="leg5" onclick="tk(5)"><span class="ls" style="background:#4488ff"></span><span class="ll">$80.3-$87.4</span><span class="lp">10.5%</span></div>
-<div class="li" id="leg6" onclick="tk(6)"><span class="ls" style="background:#aa44ff"></span><span class="ll">$87.4-$94.5</span><span class="lp">12.0%</span></div>
-<div class="li" id="leg7" onclick="tk(7)"><span class="ls" style="background:#ff44ff"></span><span class="ll">$94.5-$101.6</span><span class="lp">7.3%</span></div>
-<div class="li" id="leg8" onclick="tk(8)"><span class="ls" style="background:#ff77aa"></span><span class="ll">$101.6-$108.6</span><span class="lp">3.1%</span></div>
 <div class="li" id="leg9" onclick="tk(9)"><span class="ls" style="background:#cc9944"></span><span class="ll">$108.6-$115.7</span><span class="lp">2.1%</span></div>
+<div class="li" id="leg8" onclick="tk(8)"><span class="ls" style="background:#ff77aa"></span><span class="ll">$101.6-$108.6</span><span class="lp">3.1%</span></div>
+<div class="li" id="leg7" onclick="tk(7)"><span class="ls" style="background:#ff44ff"></span><span class="ll">$94.5-$101.6</span><span class="lp">7.3%</span></div>
+<div class="li" id="leg6" onclick="tk(6)"><span class="ls" style="background:#aa44ff"></span><span class="ll">$87.4-$94.5</span><span class="lp">12.0%</span></div>
+<div class="li" id="leg5" onclick="tk(5)"><span class="ls" style="background:#4488ff"></span><span class="ll">$80.3-$87.4</span><span class="lp">10.5%</span></div>
+<div class="li" id="leg4" onclick="tk(4)"><span class="ls" style="background:#44ddaa"></span><span class="ll">$73.2-$80.3</span><span class="lp">12.2%</span></div>
+<div class="li" id="leg3" onclick="tk(3)"><span class="ls" style="background:#44dd44"></span><span class="ll">$66.1-$73.2</span><span class="lp">13.9%</span></div>
+<div class="li" id="leg2" onclick="tk(2)"><span class="ls" style="background:#ffdd44"></span><span class="ll">$59.0-$66.1</span><span class="lp">22.5%</span></div>
+<div class="li" id="leg1" onclick="tk(1)"><span class="ls" style="background:#ff9944"></span><span class="ll">$52.0-$59.0</span><span class="lp">8.3%</span></div>
+<div class="li" id="leg0" onclick="tk(0)"><span class="ls" style="background:#ff4444"></span><span class="ll">$44.9-$52.0</span><span class="lp">8.1%</span></div>
 </div></div>
-<div class="chart-row"><div class="cb"><div class="ct">筹码累计分布(%) + 收盘价走势($)<span class="bd">NEW</span></div><canvas id="c1"></canvas></div><div class="tt" id="tt1"></div></div>
+<div class="chart-row" style="justify-content: space-between;"><div class="tt" id="tt1" style="flex: 1; margin-right: 10px;"></div><div class="tt" id="tt3" style="flex: 1; margin-right: 10px;"></div><div class="tt" id="tt4" style="flex: 1;"></div></div>
+<div class="chart-row"><div class="cb"><div class="ct">筹码累计分布(%) + 收盘价走势($)<span class="bd">NEW</span></div><canvas id="c1"></canvas></div></div>
 <div class="chart-row"><div class="cb"><div class="ct">OBV 能量潮</div><canvas id="c2"></canvas></div><div class="tt" id="tt2"></div></div>
 <div class="ab"><div class="at">量价异动日(最近 10 条) 机构最可能参与的节点</div><table class="tbl"><tr><th>日期</th><th>异动</th><th>收盘价</th><th>类型</th></tr><br><tr><td>2026-02-27</td><td style="color:#ff9944">-8.9%</td><td>$62.95</td><td>放量暴跌</td></tr>
 <tr><td>2026-03-17</td><td style="color:#ff9944">放量x2.8</td><td>$60.53</td><td>异常放量</td></tr>
@@ -160,6 +176,19 @@ function queryStock() {
   var url = window.location.href.replace(/[^/]+\.html$/, stockCode + '_chip.html');
   // 尝试加载新页面
   window.location.href = url;
+}
+function changeMethod() {
+  var method = document.getElementById('distributionMethod').value;
+  // 构建新的URL，包含新的划分方式
+  var url = window.location.href;
+  // 提取股票代码
+  var match = url.match(/([^/]+)_chip\.html$/);
+  if (match) {
+    var symbol = match[1];
+    // 重新加载页面，使用新的划分方式
+    var newUrl = 'http://localhost:8888/' + symbol + '_chip_' + method + '.html';
+    window.location.href = newUrl;
+  }
 }
 </script>
 <script>
@@ -231,23 +260,65 @@ function redrawCharts(){
 function updateBothPanels(idx){
   var li=(idx===undefined||idx<0)?L.length-1:idx;
   var ld=L[li],lc=CP[li],obv=OV[li];
-  var isLatest=li===L.length-1;
-  var latestTag=isLatest?' <span style="color:#51cf66">&larr; 最新</span>':'';
+  
+  // 显示前前一天的筹码分布(最左侧)
+  var li_prev2=li-2;
+  if(li_prev2>=0){
+    var ld_prev2=L[li_prev2],lc_prev2=CP[li_prev2];
+    var bands_prev2=[];
+    for(var b=curBandMin;b<=curBandMax;b++){bands_prev2.push({l:BL[b],v:CB[b][li_prev2],c:LC[b],idx:b});}
+    bands_prev2.sort(function(a,b){return a.idx-b.idx;});
+    var h_prev2='<div class=tt-date>'+ld_prev2+'</div>';
+    for(var i=bands_prev2.length-1;i>=0;i--){
+      var b=bands_prev2[i];
+      var pct=parseFloat(b.v).toFixed(1);
+      var w=Math.max(3,pct*1.5);
+      h_prev2+='<div class=tt-row><span class=tt-swatch style="background:'+b.c+'"></span><span class=tt-label>'+b.l+'</span><div class=tt-barbg><div class=tt-bar style="width:'+w+'%;background:'+b.c+'"></div></div><span class=tt-pct>'+pct+'%</span></div>';
+    }
+    h_prev2+='<div class=tt-price>收盘: $'+parseFloat(lc_prev2).toFixed(2)+'</div>';
+    document.getElementById('tt1').innerHTML=h_prev2;
+  } else {
+    document.getElementById('tt1').innerHTML='<div class=tt-date>无数据</div>';
+  }
+  
+  // 显示前一天的筹码分布(中间)
+  var li_prev1=li-1;
+  if(li_prev1>=0){
+    var ld_prev1=L[li_prev1],lc_prev1=CP[li_prev1];
+    var bands_prev1=[];
+    for(var b=curBandMin;b<=curBandMax;b++){bands_prev1.push({l:BL[b],v:CB[b][li_prev1],c:LC[b],idx:b});}
+    bands_prev1.sort(function(a,b){return a.idx-b.idx;});
+    var h_prev1='<div class=tt-date>'+ld_prev1+'</div>';
+    for(var i=bands_prev1.length-1;i>=0;i--){
+      var b=bands_prev1[i];
+      var pct=parseFloat(b.v).toFixed(1);
+      var w=Math.max(3,pct*1.5);
+      h_prev1+='<div class=tt-row><span class=tt-swatch style="background:'+b.c+'"></span><span class=tt-label>'+b.l+'</span><div class=tt-barbg><div class=tt-bar style="width:'+w+'%;background:'+b.c+'"></div></div><span class=tt-pct>'+pct+'%</span></div>';
+    }
+    h_prev1+='<div class=tt-price>收盘: $'+parseFloat(lc_prev1).toFixed(2)+'</div>';
+    document.getElementById('tt3').innerHTML=h_prev1;
+  } else {
+    document.getElementById('tt3').innerHTML='<div class=tt-date>无数据</div>';
+  }
+  
+  // 显示当天的筹码分布(最右侧)
   var bands=[];
-  for(var b=curBandMin;b<=curBandMax;b++){bands.push({l:BL[b],v:CB[b][li],c:LC[b]});}
-  bands.sort(function(a,b){return b.v-a.v;});
-  var h='<div class=tt-date>'+ld+latestTag+'</div>';
-  for(var i=0;i<bands.length;i++){
+  for(var b=curBandMin;b<=curBandMax;b++){bands.push({l:BL[b],v:CB[b][li],c:LC[b],idx:b});}
+  bands.sort(function(a,b){return a.idx-b.idx;});
+  var h='<div class=tt-date>'+ld+'</div>';
+  for(var i=bands.length-1;i>=0;i--){
     var b=bands[i];
     var pct=parseFloat(b.v).toFixed(1);
     var w=Math.max(3,pct*1.5);
     h+='<div class=tt-row><span class=tt-swatch style="background:'+b.c+'"></span><span class=tt-label>'+b.l+'</span><div class=tt-barbg><div class=tt-bar style="width:'+w+'%;background:'+b.c+'"></div></div><span class=tt-pct>'+pct+'%</span></div>';
   }
   h+='<div class=tt-price>收盘: $'+parseFloat(lc).toFixed(2)+'</div>';
-  document.getElementById('tt1').innerHTML=h;
+  document.getElementById('tt4').innerHTML=h;
+  
+  // 更新OBV能量潮
   var fi=AI.indexOf(li);
   var extra=fi!==-1?'<div class=tt-warn>&#x26A0; '+AL[fi]+' ($'+AC[fi]+')</div>':'';
-  document.getElementById('tt2').innerHTML='<div class=tt-date>'+ld+latestTag+'</div><div class=tt-obv>OBV: '+Number(obv).toLocaleString()+'</div>'+extra;
+  document.getElementById('tt2').innerHTML='<div class=tt-date>'+ld+'</div><div class=tt-obv>OBV: '+Number(obv).toLocaleString()+'</div>'+extra;
 }
 function showChipTooltip(ctx){
   var M=ctx.tooltip;
