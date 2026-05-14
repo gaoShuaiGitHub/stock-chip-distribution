@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>测试图表渲染</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e1a; color: #e0e0e0; padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .cb { background: #16213e; border-radius: 14px; padding: 16px; margin-bottom: 14px; border: 1px solid #0f3460; }
+        .ct { font-size: 13px; color: #7a8ba8; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.5px; }
+        .chart-row { display: flex; align-items: stretch; gap: 14px; margin-bottom: 14px; }
+        .chart-row .cb { flex: 1; margin-bottom: 0; min-height: 320px; }
+        .chart-row canvas { width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <div class="chart-row">
+        <div class="cb">
+            <div class="ct">测试图表</div>
+            <canvas id="test-chart"></canvas>
+        </div>
+    </div>
+
+    <script>
+        console.log('Chart.js loaded:', typeof Chart !== 'undefined');
+        
+        // 硬编码测试数据
+        const dates = ['2024-01-01', '2024-01-02', '2024-01-03', '2024-01-04', '2024-01-05'];
+        const prices = [100, 105, 102, 110, 115];
+        
+        // 渲染测试图表
+        const ctx = document.getElementById('test-chart').getContext('2d');
+        const testChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: dates,
+                datasets: [{
+                    label: '测试价格',
+                    data: prices,
+                    borderColor: '#51cf66',
+                    backgroundColor: 'rgba(81, 207, 102, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 6,
+                    tension: 0.25,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.03)' },
+                        ticks: { color: '#555', font: { size: 10 } }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.04)' },
+                        ticks: { color: '#777', font: { size: 10 } }
+                    }
+                }
+            }
+        });
+        
+        console.log('Test chart rendered successfully');
+    </script>
+</body>
+</html>

@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>股票筹码分布查询</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script>console.log('Chart.js loaded:', typeof Chart !== 'undefined');</script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e1a; color: #e0e0e0; padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .lg { display: flex; flex-wrap: wrap; gap: 8px; }
+        .li { display: flex; align-items: center; gap: 6px; cursor: pointer; background: rgba(255,255,255,0.05); padding: 5px 10px; border-radius: 8px; transition: all 0.2s; font-size: 13px; }
+        .li:hover { background: rgba(255,255,255,0.12); }
+        .li.inactive { opacity: 0.35; }
+        .ls { width: 14px; height: 14px; border-radius: 3px; flex-shrink: 0; display: inline-block; }
+        .ll { color: #ccc; }
+        .lp { color: #fff; font-weight: 600; margin-left: 4px; }
+        .cb { background: #16213e; border-radius: 14px; padding: 16px; margin-bottom: 14px; border: 1px solid #0f3460; }
+        .ct { font-size: 13px; color: #7a8ba8; margin-bottom: 10px; font-weight: 600; letter-spacing: 0.5px; }
+        .bd { background: #51cf66; color: #000; font-size: 10px; padding: 2px 6px; border-radius: 4px; margin-left: 8px; font-weight: 700; }
+        .tt { background: rgba(0,0,0,0.35); border-radius: 8px; padding: 10px 14px; margin-bottom: 10px; min-height: 60px; font-size: 12px; }
+        .tt-date { color: #8a9bbf; font-size: 11px; margin-bottom: 6px; }
+        .tt-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .tt-swatch { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; display: inline-block; }
+        .tt-label { color: #aaa; width: 90px; flex-shrink: 0; }
+        .tt-barbg { flex: 1; background: rgba(255,255,255,0.06); border-radius: 3px; height: 6px; }
+        .tt-bar { height: 6px; border-radius: 3px; max-width: 100%; }
+        .tt-pct { color: #fff; font-weight: 600; width: 40px; text-align: right; }
+        .tt-price { margin-top: 6px; color: #51cf66; font-weight: 600; }
+        .tt-obv { color: #a78bfa; margin-top: 4px; }
+        .tt-warn { color: #fbbf24; margin-top: 6px; font-size: 11px; }
+        .ab { background: #16213e; border-radius: 14px; padding: 16px; margin-bottom: 14px; border: 1px solid #0f3460; overflow-x: auto; }
+        .at { font-size: 13px; color: #7a8ba8; margin-bottom: 10px; font-weight: 600; }
+        .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .tbl th { color: #7a8ba8; text-align: left; padding: 6px 10px; border-bottom: 1px solid #0f3460; font-weight: 600; }
+        .tbl td { padding: 7px 10px; border-bottom: 1px solid rgba(255,255,255,0.04); color: #ccc; }
+        .tbl tr:hover td { background: rgba(255,255,255,0.03); }
+        .dc { background: #16213e; border-radius: 14px; padding: 16px; border: 1px solid #0f3460; font-size: 12px; line-height: 1.8; color: #7a8ba8; }
+        .dc strong { color: #e0e0e0; }
+        .chart-row { display: flex; align-items: stretch; gap: 14px; margin-bottom: 14px; }
+        .chart-row .cb { flex: 1; margin-bottom: 0; min-height: 320px; }
+        .chart-row .tt { width: 240px; flex-shrink: 0; min-height: 320px; margin: 0; }
+        .chart-row canvas { width: 100%; height: 100%; }
+        .form-container { background: #16213e; border-radius: 14px; padding: 16px; margin-bottom: 14px; border: 1px solid #0f3460; }
+        .form-title { font-size: 13px; color: #7a8ba8; margin-bottom: 10px; font-weight: 600; }
+        .form-group { display: flex; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+        .form-group input, .form-group select, .form-group button { padding: 8px 12px; border: 1px solid #0f3460; border-radius: 6px; background: rgba(255,255,255,0.05); color: #e0e0e0; font-size: 13px; }
+        .form-group button { background: #51cf66; color: #000; font-weight: 600; cursor: pointer; }
+        .form-group button:hover { background: #40c057; }
+        .form-group input:focus, .form-group select:focus { outline: none; border-color: #51cf66; }
+        .error-message { color: #ff4444; font-size: 12px; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <div class="form-title">股票筹码分布查询</div>
+        <div class="form-group">
+            <input type="text" id="symbol" placeholder="股票代码（例如：OKLO, 00700.HK, 600519.SS）" value="OKLO">
+            <select id="days">
+                <option value="90">90天</option>
+                <option value="180">180天</option>
+                <option value="365" selected>365天</option>
+                <option value="730">730天</option>
+            </select>
+            <input type="text" id="proxy" placeholder="SOCKS5代理（可选）" value="socks5://127.0.0.1:7897">
+            <button id="fetch-btn">查询</button>
+        </div>
+        <div id="error-message" class="error-message"></div>
+    </div>
+
+    <div id="legend-container" style="display: none;">
+        <div style="background:#16213e;border-radius:14px;padding:12px 16px;margin-bottom:14px;border:1px solid #0f3460;">
+            <div style="font-size:11px;color:#444;margin-bottom:8px;">&#x1F6D8; 点击图例单独查看，双击恢复全部 &nbsp;|&nbsp; &#x26A0; 异动日 = 放量&gt;2.5&times;均量 或 涨跌&gt;8%</div>
+            <div class="lg" id="legend"></div>
+        </div>
+    </div>
+
+    <div id="chart-container">
+        <div class="chart-row">
+            <div class="cb">
+                <div class="ct">筹码累计分布（%） + 收盘价走势（$）<span class="bd">NEW</span></div>
+                <canvas id="c1"></canvas>
+            </div>
+            <div class="tt" id="tt1"></div>
+        </div>
+        <div class="chart-row">
+            <div class="cb">
+                <div class="ct">OBV 能量潮</div>
+                <canvas id="c2"></canvas>
+            </div>
+            <div class="tt" id="tt2"></div>
+        </div>
+        <div id="anomalies-container"></div>
+        <div class="dc">
+            <strong>读图指南：</strong><br>
+            <strong>主图：</strong>左轴（%）累计筹码占比，右轴（$）收盘价（灰粗线）。<br>
+            <strong>OBV 副图：</strong>能量潮，跟涨绿/跟跌红；OBV 持续上升 = 资金净流入。<br>
+            <strong>异动日：</strong>出现在 OBV tooltip 里（&#x26A0; 标记）。<br>
+            <strong>实战：</strong>看当前股价是否在「放量暴涨日收盘价」之上&mdash;若长期在之下，说明机构可能已撤退。
+        </div>
+    </div>
+
+    <script>
+        // 颜色数组
+        const COLORS = ["#ff4444","#ff9944","#ffdd44","#44dd44","#44ddaa","#4488ff","#aa44ff","#ff44ff","#ff77aa","#cc9944"];
+        let c1, c2; // 图表实例
+        let hidden = {}; // 隐藏的图例
+
+        // 获取股票数据
+        async function fetchData(symbol, days, proxy) {
+            try {
+                console.log('Fetching data for:', symbol, 'days:', days);
+                // 处理股票代码格式
+                let ys = symbol.replace(".US", "").replace(".HK", "").replace(".SS", "").replace(".SZ", "");
+                if (!symbol.includes(".")) {
+                    ys = ys + ".US";
+                }
+                
+                const url = `https://query2.finance.yahoo.com/v8/finance/chart/${ys}?interval=1d&range=${days}d`;
+                console.log('Fetching URL:', url);
+                
+                const headers = {
+                    "User-Agent": "Mozilla/5.0"
+                };
+
+                // 发送请求
+                let response;
+                // 浏览器端无法直接使用SOCKS5代理，使用直接请求
+                response = await fetch(url, { headers });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                console.log('API response:', data);
+                
+                const result = data.chart.result[0];
+                if (!result) {
+                    throw new Error("No data returned");
+                }
+
+                const timestamps = result.timestamp;
+                const quote = result.indicators.quote[0];
+                const dataArray = [];
+
+                for (let i = 0; i < timestamps.length; i++) {
+                    const open = quote.open[i];
+                    const high = quote.high[i];
+                    const low = quote.low[i];
+                    const close = quote.close[i];
+                    const volume = quote.volume[i] || 0;
+
+                    if (open === null) continue;
+
+                    const date = new Date(timestamps[i] * 1000).toISOString().split('T')[0];
+                    dataArray.push({
+                        date,
+                        open,
+                        high,
+                        low,
+                        close,
+                        volume
+                    });
+                }
+
+                console.log('Processed data:', dataArray.length, 'entries');
+                return dataArray.sort((a, b) => a.date.localeCompare(b.date));
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                throw error;
+            }
+        }
+
+        // 计算OBV指标
+        function calculateOBV(data) {
+            let obv = 0;
+            return data.map((bar, index) => {
+                if (index > 0) {
+                    const prevClose = data[index - 1].close;
+                    if (bar.close > prevClose) {
+                        obv += bar.volume;
+                    } else if (bar.close < prevClose) {
+                        obv -= bar.volume;
+                    }
+                }
+                return { ...bar, obv };
+            });
+        }
+
+        // 检测量价异动
+        function detectAnomalies(data, volumeRatio = 2.5, priceChange = 0.08) {
+            if (data.length < 25) return [];
+
+            const volumes = data.map(x => x.volume);
+            const averages = [];
+
+            for (let i = 19; i < data.length; i++) {
+                const sum = volumes.slice(i - 19, i + 1).reduce((a, b) => a + b, 0);
+                averages.push(sum / 20);
+            }
+
+            const anomalies = [];
+            for (let i = 0; i < data.length; i++) {
+                if (i < 20 || averages[i - 20] === 0) continue;
+
+                const volumeRatioValue = data[i].volume / averages[i - 20];
+                const priceChangeValue = (data[i].close - data[i - 1].close) / data[i - 1].close;
+
+                if (volumeRatioValue > volumeRatio || Math.abs(priceChangeValue) > priceChange) {
+                    const labels = [];
+                    if (volumeRatioValue > volumeRatio) {
+                        labels.push(`放量x${volumeRatioValue.toFixed(1)}`);
+                    }
+                    if (Math.abs(priceChangeValue) > priceChange) {
+                        const sign = priceChangeValue > 0 ? "+" : "";
+                        labels.push(`${sign}${(priceChangeValue * 100).toFixed(1)}%`);
+                    }
+
+                    let type = "异常放量";
+                    if (priceChangeValue > priceChange) {
+                        type = "放量暴涨";
+                    } else if (priceChangeValue < -priceChange) {
+                        type = "放量暴跌";
+                    }
+
+                    anomalies.push({
+                        date: data[i].date,
+                        close: data[i].close,
+                        label: labels.join(" / "),
+                        atype: type
+                    });
+                }
+            }
+
+            return anomalies;
+        }
+
+        // 计算筹码分布
+        function calculateChipDistribution(data, n = 10) {
+            const high = Math.max(...data.map(x => x.high));
+            const low = Math.min(...data.map(x => x.low));
+            const bandSize = (high - low) / n;
+
+            // 计算每个交易日的筹码分布
+            const dataWithBands = data.map(bar => {
+                const { high: barHigh, low: barLow, volume } = bar;
+                const bands = new Array(n).fill(0);
+
+                if (barHigh !== barLow) {
+                    const volumePerPrice = volume / (barHigh - barLow);
+                    for (let b = 0; b < n; b++) {
+                        const bandLow = low + b * bandSize;
+                        const bandHigh = low + (b + 1) * bandSize;
+                        const overlapLow = Math.max(bandLow, barLow);
+                        const overlapHigh = Math.min(bandHigh, barHigh);
+                        if (overlapLow < overlapHigh) {
+                            bands[b] = volumePerPrice * (overlapHigh - overlapLow);
+                        }
+                    }
+                }
+
+                return { ...bar, bands };
+            });
+
+            // 计算累计筹码分布
+            let cumulative = new Array(n).fill(0);
+            const dataWithChip = dataWithBands.map(bar => {
+                cumulative = cumulative.map((sum, index) => sum + bar.bands[index]);
+                const total = cumulative.reduce((a, b) => a + b, 0);
+                const chipPercentage = total > 0 ? cumulative.map(c => (c / total) * 100) : new Array(n).fill(0);
+                return { ...bar, cb: [...cumulative], cp: chipPercentage };
+            });
+
+            return { data: dataWithChip, low, high, bandSize };
+        }
+
+        // 更新两个面板
+        function updateBothPanels(idx, dates, closes, bcum, blabs, cols, obvs, ano) {
+            const li = (idx === undefined || idx < 0) ? dates.length - 1 : idx;
+            const ld = dates[li];
+            const lc = closes[li];
+            const obv = obvs[li];
+            const isLatest = li === dates.length - 1;
+            const latestTag = isLatest ? ' <span style="color:#51cf66">&larr; 最新</span>' : '';
+
+            // 构建筹码分布 tooltip
+            let bands = [];
+            for (let b = 0; b < bcum.length; b++) {
+                bands.push({ l: blabs[b], v: bcum[b][li], c: cols[b] });
+            }
+            bands.sort((a, b) => b.v - a.v);
+
+            let h = `<div class=tt-date>${ld}${latestTag}</div>`;
+            for (let i = 0; i < bands.length; i++) {
+                const b = bands[i];
+                const pct = parseFloat(b.v).toFixed(1);
+                const w = Math.max(3, pct * 1.5);
+                h += `<div class=tt-row><span class=tt-swatch style="background:${b.c}"></span><span class=tt-label>${b.l}</span><div class=tt-barbg><div class=tt-bar style="width:${w}%;background:${b.c}"></div></div><span class=tt-pct>${pct}%</span></div>`;
+            }
+            h += `<div class=tt-price>收盘: $${parseFloat(lc).toFixed(2)}</div>`;
+            document.getElementById('tt1').innerHTML = h;
+
+            // 构建 OBV tooltip
+            const fi = ano.findIndex(a => a.i === li);
+            const extra = fi !== -1 ? `<div class=tt-warn>&#x26A0; ${ano[fi].l} ($${ano[fi].c})</div>` : '';
+            document.getElementById('tt2').innerHTML = `<div class=tt-date>${ld}${latestTag}</div><div class=tt-obv>OBV: ${Number(obv).toLocaleString()}</div>${extra}`;
+        }
+
+        // 显示筹码分布图 tooltip
+        function showChipTooltip(ctx, dates, closes, bcum, blabs, cols, obvs, ano) {
+            const M = ctx.tooltip;
+            if (M.opacity === 0) {
+                updateBothPanels(dates.length - 1, dates, closes, bcum, blabs, cols, obvs, ano);
+                return;
+            }
+            const idx = (M.dataPoints && M.dataPoints[0]) ? M.dataPoints[0].dataIndex : dates.length - 1;
+            updateBothPanels(idx, dates, closes, bcum, blabs, cols, obvs, ano);
+        }
+
+        // 显示 OBV 图 tooltip
+        function showObvTooltip(ctx, dates, closes, bcum, blabs, cols, obvs, ano) {
+            const M = ctx.tooltip;
+            if (M.opacity === 0) {
+                updateBothPanels(dates.length - 1, dates, closes, bcum, blabs, cols, obvs, ano);
+                return;
+            }
+            const idx = (M.dataPoints && M.dataPoints[0]) ? M.dataPoints[0].dataIndex : dates.length - 1;
+            updateBothPanels(idx, dates, closes, bcum, blabs, cols, obvs, ano);
+        }
+
+        // 切换图例显示/隐藏
+        function toggleLegend(i) {
+            const el = document.getElementById(`leg${i}`);
+            if (hidden[i]) {
+                delete hidden[i];
+                el.classList.remove('inactive');
+                c1.data.datasets[i].borderWidth = 1.8;
+            } else {
+                hidden[i] = true;
+                el.classList.add('inactive');
+                c1.data.datasets[i].borderWidth = 0;
+            }
+            c1.update('none');
+        }
+
+        // 渲染图表
+        function renderCharts(data, symbol, al, ah, bs, anomalies, n_bands) {
+            const dates = data.map(x => x.date);
+            const closes = data.map(x => parseFloat(x.close.toFixed(2)));
+            const obvs = data.map(x => Math.round(x.obv));
+            const bcum = Array.from({ length: n_bands }, (_, b) => 
+                data.map(x => parseFloat(x.cp[b].toFixed(2)))
+            );
+            const blabs = Array.from({ length: n_bands }, (_, b) => 
+                `$${(al + b * bs).toFixed(1)}-$${(al + (b + 1) * bs).toFixed(1)}`
+            );
+            const cols = COLORS.slice(0, n_bands);
+            const mp = data.reduce((acc, x, i) => { acc[x.date] = i; return acc; }, {});
+            const ano = anomalies.map(a => ({
+                i: mp[a.date],
+                l: a.label,
+                c: a.close
+            })).filter(a => a.i !== undefined);
+
+            // 渲染图例
+            const legendHtml = blabs.map((blab, i) => 
+                `<div class="li" id="leg${i}" onclick="toggleLegend(${i})"><span class="ls" style="background:${cols[i]}"></span><span class="ll">${blab}</span><span class="lp">${bcum[i][bcum[i].length - 1].toFixed(1)}%</span></div>`
+            ).join('\n');
+            document.getElementById('legend').innerHTML = legendHtml;
+            document.getElementById('legend-container').style.display = 'block';
+
+            // 渲染异动日表格
+            if (anomalies.length > 0) {
+                const recentAnomalies = anomalies.slice(-10);
+                const rows = recentAnomalies.map(a => 
+                    `<tr><td>${a.date}</td><td style="color:#ff9944">${a.label}</td><td>$${a.close.toFixed(2)}</td><td>${a.atype}</td></tr>`
+                ).join('\n');
+                const anomaliesHtml = `
+                    <div class="ab">
+                        <div class="at">量价异动日（最近 ${Math.min(10, anomalies.length)} 条）&mdash; 机构最可能参与的节点</div>
+                        <table class="tbl">
+                            <tr><th>日期</th><th>异动</th><th>收盘价</th><th>类型</th></tr>
+                            ${rows}
+                        </table>
+                    </div>
+                `;
+                document.getElementById('anomalies-container').innerHTML = anomaliesHtml;
+            } else {
+                document.getElementById('anomalies-container').innerHTML = '';
+            }
+
+            // 销毁旧图表
+            if (c1) c1.destroy();
+            if (c2) c2.destroy();
+
+            // 构建筹码分布图数据集
+            const chipDatasets = blabs.map((blab, i) => ({
+                label: `${blab} (percent)`,
+                data: bcum[i],
+                borderColor: cols[i],
+                backgroundColor: 'transparent',
+                borderWidth: 1.8,
+                pointRadius: 0,
+                pointHoverRadius: 3,
+                tension: 0.25,
+                fill: false,
+                yAxisID: 'y'
+            }));
+
+            // 添加收盘价数据集
+            const priceDataset = {
+                label: '收盘价 ($)',
+                data: closes,
+                borderColor: '#e0e0e0',
+                backgroundColor: 'rgba(224,224,224,0.06)',
+                borderWidth: 2,
+                pointRadius: 0,
+                pointHoverRadius: 4,
+                tension: 0.25,
+                fill: true,
+                yAxisID: 'y1',
+                order: -1
+            };
+
+            // 渲染筹码分布图
+            try {
+                console.log('Creating chart c1...');
+                const c1Element = document.getElementById('c1');
+                console.log('c1 element:', c1Element);
+                c1 = new Chart(c1Element, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [...chipDatasets, priceDataset]
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                enabled: false,
+                                external: (ctx) => showChipTooltip(ctx, dates, closes, bcum, blabs, cols, obvs, ano)
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.03)' },
+                                ticks: { color: '#555', font: { size: 10 }, maxTicksLimit: 20 }
+                            },
+                            y: {
+                                min: 0,
+                                max: 100,
+                                position: 'left',
+                                grid: { color: 'rgba(255,255,255,0.04)' },
+                                ticks: { color: '#777', callback: (v) => v + '%', font: { size: 10 } },
+                                title: { display: true, text: '累计筹码占比 (%)', color: '#555', font: { size: 10 } }
+                            },
+                            y1: {
+                                position: 'right',
+                                grid: { drawOnChartArea: false },
+                                ticks: { color: '#aaa', font: { size: 10 } },
+                                title: { display: true, text: '收盘价 ($)', color: '#aaa', font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+                console.log('Chart c1 created successfully');
+            } catch (error) {
+                console.error('Error creating chart c1:', error);
+                document.getElementById('error-message').textContent += `\n创建图表1错误：${error.message}`;
+            }
+
+            // 渲染 OBV 图
+            try {
+                console.log('Creating chart c2...');
+                const c2Element = document.getElementById('c2');
+                console.log('c2 element:', c2Element);
+                c2 = new Chart(c2Element, {
+                    type: 'line',
+                    data: {
+                        labels: dates,
+                        datasets: [{
+                            label: 'OBV',
+                            data: obvs,
+                            borderColor: 'rgba(167,139,250,0.8)',
+                            backgroundColor: 'rgba(167,139,250,0.05)',
+                            borderWidth: 1.5,
+                            pointRadius: 0,
+                            pointHoverRadius: 3,
+                            tension: 0.3,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        interaction: { mode: 'index', intersect: false },
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                enabled: false,
+                                external: (ctx) => showObvTooltip(ctx, dates, closes, bcum, blabs, cols, obvs, ano)
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { color: 'rgba(255,255,255,0.03)' },
+                                ticks: { color: '#555', font: { size: 10 }, maxTicksLimit: 20 }
+                            },
+                            y: {
+                                grid: { color: 'rgba(255,255,255,0.04)' },
+                                ticks: { color: '#888', font: { size: 10 } },
+                                title: { display: true, text: 'OBV', color: '#a78bfa', font: { size: 10 } }
+                            }
+                        }
+                    }
+                });
+                console.log('Chart c2 created successfully');
+            } catch (error) {
+                console.error('Error creating chart c2:', error);
+                document.getElementById('error-message').textContent += `\n创建图表2错误：${error.message}`;
+            }
+
+            // 初始化 tooltip
+            updateBothPanels(dates.length - 1, dates, closes, bcum, blabs, cols, obvs, ano);
+
+            // 添加鼠标离开事件
+            document.getElementById('c1').addEventListener('mouseleave', () => {
+                updateBothPanels(dates.length - 1, dates, closes, bcum, blabs, cols, obvs, ano);
+            });
+            document.getElementById('c2').addEventListener('mouseleave', () => {
+                updateBothPanels(dates.length - 1, dates, closes, bcum, blabs, cols, obvs, ano);
+            });
+
+            // 添加双击恢复全部图例的事件
+            const allLegs = document.querySelectorAll('.li');
+            allLegs.forEach(leg => {
+                leg.addEventListener('dblclick', () => {
+                    hidden = {};
+                    const legs = document.querySelectorAll('.li');
+                    legs.forEach((l, i) => {
+                        l.classList.remove('inactive');
+                        if (c1.data.datasets[i]) {
+                            c1.data.datasets[i].borderWidth = 1.8;
+                        }
+                    });
+                    c1.update('none');
+                });
+            });
+
+            // 显示图表容器
+            document.getElementById('chart-container').style.display = 'block';
+        }
+
+        // 生成测试数据
+        function generateTestData() {
+            const data = [];
+            const startDate = new Date(2023, 0, 1);
+            let price = 100;
+            let volume = 1000000;
+            
+            for (let i = 0; i < 180; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                
+                // 随机价格波动
+                const change = (Math.random() - 0.45) * 2;
+                price = Math.max(50, price * (1 + change / 100));
+                
+                // 随机成交量
+                volume = Math.max(500000, volume * (0.8 + Math.random() * 0.4));
+                
+                data.push({
+                    date: date.toISOString().split('T')[0],
+                    open: price * (0.99 + Math.random() * 0.02),
+                    high: price * (1 + Math.random() * 0.03),
+                    low: price * (0.97 + Math.random() * 0.03),
+                    close: price,
+                    volume: volume
+                });
+            }
+            
+            return data;
+        }
+
+        // 主查询函数
+        async function fetchAndRender() {
+            const symbol = document.getElementById('symbol').value.trim();
+            const days = parseInt(document.getElementById('days').value);
+            const proxy = document.getElementById('proxy').value.trim();
+            const errorElement = document.getElementById('error-message');
+
+            if (!symbol) {
+                errorElement.textContent = '请输入股票代码';
+                return;
+            }
+
+            errorElement.textContent = '';
+
+            try {
+                // 显示加载状态
+                document.getElementById('fetch-btn').textContent = '加载中...';
+                document.getElementById('fetch-btn').disabled = true;
+
+                // 使用测试数据
+                console.log('Using test data...');
+                const data = generateTestData();
+                console.log('Test data generated:', data.length, 'entries');
+                
+                if (data.length === 0) {
+                    throw new Error('未获取到数据，请检查股票代码是否正确');
+                }
+
+                // 计算 OBV
+                console.log('Calculating OBV...');
+                const dataWithOBV = calculateOBV(data);
+                console.log('OBV calculation completed');
+
+                // 检测异动
+                console.log('Detecting anomalies...');
+                const anomalies = detectAnomalies(dataWithOBV);
+                console.log('Anomaly detection completed:', anomalies.length, 'anomalies');
+
+                // 计算筹码分布
+                console.log('Calculating chip distribution...');
+                const { data: dataWithChip, low, high, bandSize } = calculateChipDistribution(dataWithOBV);
+                console.log('Chip distribution calculation completed');
+
+                // 渲染图表
+                console.log('Rendering charts...');
+                renderCharts(dataWithChip, symbol, low, high, bandSize, anomalies, 10);
+                console.log('Chart rendering completed');
+
+            } catch (error) {
+                errorElement.textContent = `错误：${error.message}`;
+                console.error('Error:', error);
+                // 显示完整错误信息
+                console.error('Full error:', error);
+            } finally {
+                // 恢复按钮状态
+                document.getElementById('fetch-btn').textContent = '查询';
+                document.getElementById('fetch-btn').disabled = false;
+            }
+        }
+
+        // 绑定查询按钮事件
+        document.getElementById('fetch-btn').addEventListener('click', fetchAndRender);
+
+        // 绑定回车键事件
+        document.getElementById('symbol').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                fetchAndRender();
+            }
+        });
+
+        // 初始加载示例数据
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded, starting fetchAndRender...');
+            fetchAndRender();
+        });
+    </script>
+</body>
+</html>
