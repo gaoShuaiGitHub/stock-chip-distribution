@@ -12,8 +12,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-
 .ctrl-group { display: flex; align-items: center; gap: 6px; }
 .ctrl-label { font-size: 12px; color: #7a8ba8; font-weight: 600; }
 .ctrl-head { font-size: 11px; color: #444; margin-bottom: 6px; font-weight: 600; letter-spacing: 0.5px; }
-input[type=date], input[type=number], input[type=text] { background: #0f1a2e; border: 1px solid #0f3460; border-radius: 6px; color: #e0e0e0; padding: 5px 8px; font-size: 12px; outline: none; }
-input[type=date]:focus, input[type=number]:focus, input[type=text]:focus { border-color: #4488ff; }
+input[type=date], input[type=number], input[type=text], select { background: #0f1a2e; border: 1px solid #0f3460; border-radius: 6px; color: #e0e0e0; padding: 5px 8px; font-size: 12px; outline: none; }
+input[type=date]:focus, input[type=number]:focus, input[type=text]:focus, select:focus { border-color: #4488ff; }
 input[type=number] { width: 60px; }
 button { background: #1e3a6e; border: 1px solid #2a5298; color: #e0e0e0; padding: 5px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; font-weight: 600; transition: background 0.2s; }
 button:hover { background: #2a5298; }
@@ -41,6 +41,9 @@ button:hover { background: #2a5298; }
 .tt-price { margin-top: 6px; color: #51cf66; font-weight: 600; }
 .tt-obv { color: #a78bfa; margin-top: 4px; }
 .tt-warn { color: #fbbf24; margin-top: 6px; font-size: 11px; }
+.tt-profit { color: #4ade80; margin-top: 4px; }
+.tt-loss { color: #f87171; margin-top: 4px; }
+.tt-concentration { color: #fbbf24; margin-top: 4px; }
 .ab { background: #16213e; border-radius: 14px; padding: 16px; margin-bottom: 14px; border: 1px solid #0f3460; overflow-x: auto; }
 .at { font-size: 13px; color: #7a8ba8; margin-bottom: 10px; font-weight: 600; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -54,6 +57,15 @@ button:hover { background: #2a5298; }
 .chart-row .tt { width: 240px; flex-shrink: 0; min-height: 200px; margin: 0; }
 .chart-row canvas { width: 100%; height: 100%; }
 .error-message { color: #ff6b6b; font-size: 14px; margin-bottom: 10px; }
+.profit-band { background: #4ade80 !important; }
+.loss-band { background: #f87171 !important; }
+.stats-panel { display: flex; gap: 16px; margin-bottom: 14px; }
+.stat-item { background: #16213e; border-radius: 10px; padding: 12px 16px; border: 1px solid #0f3460; }
+.stat-label { font-size: 11px; color: #7a8ba8; margin-bottom: 4px; }
+.stat-value { font-size: 16px; font-weight: 600; }
+.stat-profit { color: #4ade80; }
+.stat-loss { color: #f87171; }
+.stat-concentration { color: #fbbf24; }
 </style>
 </head>
 <body>
@@ -67,6 +79,62 @@ button:hover { background: #2a5298; }
       </div>
       <button onclick="loadStockData()">查询</button>
     </div>
+  </div>
+  <div style="margin-left:20px;border-left:1px solid #0f3460;padding-left:20px;">
+    <div class="ctrl-head">显示范围</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div class="ctrl-group">
+        <span class="ctrl-label">显示天数</span>
+        <input type="number" id="displayDays" value="90" min="30" max="730">
+      </div>
+    </div>
+  </div>
+  <div style="margin-left:20px;border-left:1px solid #0f3460;padding-left:20px;">
+    <div class="ctrl-head">筹码计算范围</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div class="ctrl-group">
+        <span class="ctrl-label">最大计算天数</span>
+        <input type="number" id="maxCalcDays" value="730" min="90" max="1825">
+      </div>
+    </div>
+  </div>
+  <div style="margin-left:20px;border-left:1px solid #0f3460;padding-left:20px;">
+    <div class="ctrl-head">参数设置</div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <div class="ctrl-group">
+        <span class="ctrl-label">划分方法</span>
+        <select id="methodSelect" style="width:140px;">
+          <option value="volume_weighted">成交量加权（推荐）</option>
+          <option value="equal_interval">等距划分</option>
+          <option value="equal_frequency">等频划分</option>
+          <option value="logarithmic">对数划分</option>
+          <option value="standard_deviation">标准差划分</option>
+        </select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">区间数</span>
+        <input type="number" id="bandCount" value="10" min="5" max="20">
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label">衰减因子</span>
+        <input type="number" id="decayFactor" value="0.998" min="0.99" max="1.0" step="0.001">
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="statsContainer" class="stats-panel" style="display:none;">
+  <div class="stat-item">
+    <div class="stat-label">获利盘占比</div>
+    <div class="stat-value stat-profit" id="profitPct">--</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">套牢盘占比</div>
+    <div class="stat-value stat-loss" id="lossPct">--</div>
+  </div>
+  <div class="stat-item">
+    <div class="stat-label">筹码集中度</div>
+    <div class="stat-value stat-concentration" id="concentration">--</div>
   </div>
 </div>
 
@@ -99,10 +167,19 @@ button:hover { background: #2a5298; }
 </div>
 
 <div id="guide" class="dc" style="display:none;">
-  <strong>读图指南：</strong><br>
-  <strong>主图：</strong>左轴（%）累计筹码占比，右轴（$）收盘价（灰粗线）。<br>
+  <strong>📊 读图指南：</strong><br>
+  <strong>主图：</strong>左轴（%）累计筹码占比，右轴（$）收盘价（灰粗线）。绿色区域为获利盘，红色区域为套牢盘。<br>
   <strong>OBV 副图：</strong>能量潮，跟涨绿/跟跌红；OBV 持续上升 = 资金净流入。<br>
-  <strong>实战：</strong>看当前股价是否在「放量暴涨日收盘价」之上 若长期在之下，说明机构可能已撤退。
+  <strong>实战：</strong>看当前股价是否在「放量暴涨日收盘价」之上 若长期在之下，说明机构可能已撤退。<br>
+  <strong>筹码集中度：</strong>前三大筹码区间占比之和，数值越高说明筹码越集中。<br><br>
+  
+  <strong>⏰ 时间衰减机制说明：</strong><br>
+  <strong>显示天数：</strong>图表展示的时间范围，不影响筹码计算。<br>
+  <strong>最大计算天数：</strong>用于筹码计算的历史数据范围（默认730天=2年）。<br>
+  <strong>衰减因子：</strong>每日权重衰减系数（默认0.998），公式：权重=衰减因子^天数前。<br>
+  <strong>衰减效果：</strong>1个月前≈94%权重，6个月前≈70%，1年前≈47%，2年前≈22%。<br>
+  <strong>衰减阈值：</strong>权重低于1%的数据不再计入计算，避免过旧数据干扰。<br>
+  <strong>设计理念：</strong>历史交易有价值，但价值随时间衰减，近期交易对当前筹码分布影响更大。
 </div>
 
 <script>
@@ -119,9 +196,14 @@ var curBandMax = NB - 1;
 var hidden = {};
 var c1 = null;
 var c2 = null;
+var BREAKS = []; // 价格区间边界
 
-// 颜色配置
-var COLORS = ["#ff4444","#ff9944","#ffdd44","#44dd44","#44ddaa","#4488ff","#aa44ff","#ff44ff","#ff77aa","#cc9944"];
+// 衰减阈值常量（权重低于此值的数据不再计入）
+var DECAY_THRESHOLD = 0.01; // 1%
+
+// 获利盘/套牢盘颜色配置
+var PROFIT_COLORS = ["#4ade80","#4ade80","#86efac","#86efac","#bbf7d0"];
+var LOSS_COLORS = ["#fca5a5","#f87171","#f87171","#ef4444","#ef4444"];
 
 function getUrlParam(name) {
   var urlParams = new URLSearchParams(window.location.search);
@@ -144,27 +226,114 @@ function obv(data) {
   return obvs;
 }
 
-function calculateChipDistribution(data, n_bands) {
+function calculateChipDistribution(data, n_bands, method, decay_factor) {
+  // 计算最高价和最低价
   var prices = [];
   for (var i = 0; i < data.length; i++) {
     prices.push(data[i].low, data[i].high);
   }
-  
   var al = Math.min(...prices);
   var ah = Math.max(...prices);
-  var range = ah - al;
-  var bandWidth = range / n_bands;
+  
+  // 根据不同方法计算价格区间
+  var breaks;
+  if (method === "equal_interval") {
+    // 等距划分
+    breaks = [];
+    var range = ah - al;
+    for (var i = 0; i <= n_bands; i++) {
+      breaks.push(al + (i * range) / n_bands);
+    }
+  } else if (method === "equal_frequency") {
+    // 等频划分
+    var all_prices = [];
+    for (var i = 0; i < data.length; i++) {
+      var bar = data[i];
+      if (bar.high != bar.low) {
+        var step = (bar.high - bar.low) / 100;
+        for (var j = 0; j <= 100; j++) {
+          all_prices.push(bar.low + j * step);
+        }
+      }
+    }
+    all_prices.sort(function(a, b) { return a - b; });
+    breaks = [];
+    for (var i = 0; i <= n_bands; i++) {
+      var idx = Math.floor((i / n_bands) * (all_prices.length - 1));
+      breaks.push(all_prices[idx] || al + (i * (ah - al)) / n_bands);
+    }
+  } else if (method === "logarithmic") {
+    // 对数划分
+    var log_al = Math.log(Math.max(al, 0.01));
+    var log_ah = Math.log(ah);
+    breaks = [];
+    for (var i = 0; i <= n_bands; i++) {
+      breaks.push(Math.exp(log_al + (i * (log_ah - log_al)) / n_bands));
+    }
+  } else if (method === "volume_weighted") {
+    // 成交量加权划分（推荐）
+    var price_volume = [];
+    for (var i = 0; i < data.length; i++) {
+      var bar = data[i];
+      if (bar.high != bar.low && bar.volume > 0) {
+        var step = (bar.high - bar.low) / 100;
+        var weight = bar.volume / 100;
+        for (var j = 0; j <= 100; j++) {
+          price_volume.push({price: bar.low + j * step, weight: weight});
+        }
+      }
+    }
+    price_volume.sort(function(a, b) { return a.price - b.price; });
+    
+    var total_weight = price_volume.reduce(function(sum, pv) { return sum + pv.weight; }, 0);
+    breaks = [al];
+    var target_weight = 0;
+    var current_weight = 0;
+    for (var i = 0; i < price_volume.length; i++) {
+      current_weight += price_volume[i].weight;
+      if (current_weight >= target_weight + total_weight / n_bands) {
+        breaks.push(price_volume[i].price);
+        target_weight += total_weight / n_bands;
+      }
+    }
+    while (breaks.length <= n_bands) {
+      breaks.push(ah);
+    }
+    breaks = breaks.slice(0, n_bands + 1);
+  } else if (method === "standard_deviation") {
+    // 标准差划分
+    var all_prices = [];
+    for (var i = 0; i < data.length; i++) {
+      all_prices.push(data[i].open, data[i].high, data[i].low, data[i].close);
+    }
+    var mean = all_prices.reduce(function(sum, p) { return sum + p; }, 0) / all_prices.length;
+    var variance = all_prices.reduce(function(sum, p) { return sum + Math.pow(p - mean, 2); }, 0) / all_prices.length;
+    var std = Math.sqrt(variance);
+    var min_price = Math.max(al, mean - 3 * std);
+    var max_price = Math.min(ah, mean + 3 * std);
+    breaks = [];
+    var range = max_price - min_price;
+    for (var i = 0; i <= n_bands; i++) {
+      breaks.push(min_price + (i * range) / n_bands);
+    }
+  } else {
+    // 默认等距划分
+    var range = ah - al;
+    breaks = [];
+    for (var i = 0; i <= n_bands; i++) {
+      breaks.push(al + (i * range) / n_bands);
+    }
+  }
+  
+  BREAKS = breaks;
   
   // 计算价格区间标签
   BL = [];
   for (var b = 0; b < n_bands; b++) {
-    var lower = al + b * bandWidth;
-    var upper = al + (b + 1) * bandWidth;
-    BL.push("$" + lower.toFixed(1) + "-$" + upper.toFixed(1));
+    var lower = breaks[b];
+    var upper = breaks[b + 1];
+    BL.push("$" + lower.toFixed(2) + "-$" + upper.toFixed(2));
   }
-  
-  // 颜色数组
-  LC = COLORS.slice(0, n_bands);
   
   // 初始化筹码分布数组
   CB = [];
@@ -182,22 +351,37 @@ function calculateChipDistribution(data, n_bands) {
     var h = bar.high;
     var vol = bar.volume;
     
+    // 时间衰减因子（远期数据权重降低）
+    var days_ago = data.length - 1 - i;
+    var decay = Math.pow(decay_factor, days_ago);
+    
+    // 应用衰减阈值：权重低于阈值的数据不再计入
+    if (decay < DECAY_THRESHOLD) {
+      // 跳过权重过低的数据，直接使用已累计的筹码分布
+      var total = cum_total.reduce(function(a, b) { return a + b; }, 0);
+      var cp = cum_total.map(function(c) { return total ? (c / total * 100) : 0; });
+      
+      for (var b = 0; b < n_bands; b++) {
+        CB[b].push(cp[b]);
+      }
+      continue;
+    }
+    
     // 当天各区间的成交量
     var bands = new Array(n_bands).fill(0);
     
     if (h != l && vol > 0) {
       var vp = vol / (h - l);
-      var lo = al;
       
       for (var b = 0; b < n_bands; b++) {
-        var hi = lo + bandWidth;
+        var lo = breaks[b];
+        var hi = breaks[b + 1];
         var ol = Math.max(lo, l);
         var oh = Math.min(hi, h);
         
         if (ol < oh) {
-          bands[b] = vp * (oh - ol);
+          bands[b] = vp * (oh - ol) * decay;
         }
-        lo = hi;
       }
     }
     
@@ -215,7 +399,82 @@ function calculateChipDistribution(data, n_bands) {
     }
   }
   
-  return { breaks: Array.from({length: n_bands + 1}, function(_, i) { return al + i * bandWidth; }) };
+  // 根据最新收盘价确定获利盘/套牢盘颜色
+  var latest_close = data[data.length - 1].close;
+  LC = [];
+  for (var b = 0; b < n_bands; b++) {
+    var band_mid = (breaks[b] + breaks[b + 1]) / 2;
+    if (band_mid >= latest_close) {
+      // 获利盘 - 绿色系
+      LC.push(PROFIT_COLORS[Math.min(b, PROFIT_COLORS.length - 1)]);
+    } else {
+      // 套牢盘 - 红色系
+      LC.push(LOSS_COLORS[Math.min(b, LOSS_COLORS.length - 1)]);
+    }
+  }
+  
+  return { breaks: breaks, latest_close: latest_close };
+}
+
+function calculateStats(data, breaks, latest_close) {
+  // 计算最新的筹码分布
+  var cum_total = new Array(NB).fill(0);
+  var decay_factor = parseFloat(document.getElementById('decayFactor').value);
+  
+  for (var i = 0; i < data.length; i++) {
+    var bar = data[i];
+    var l = bar.low;
+    var h = bar.high;
+    var vol = bar.volume;
+    
+    var days_ago = data.length - 1 - i;
+    var decay = Math.pow(decay_factor, days_ago);
+    
+    if (h != l && vol > 0) {
+      var vp = vol / (h - l);
+      for (var b = 0; b < NB; b++) {
+        var lo = breaks[b];
+        var hi = breaks[b + 1];
+        var ol = Math.max(lo, l);
+        var oh = Math.min(hi, h);
+        
+        if (ol < oh) {
+          cum_total[b] += vp * (oh - ol) * decay;
+        }
+      }
+    }
+  }
+  
+  var total = cum_total.reduce(function(a, b) { return a + b; }, 0);
+  var cp = cum_total.map(function(c) { return total ? (c / total * 100) : 0; });
+  
+  // 计算获利盘和套牢盘占比
+  var profit_pct = 0;
+  var loss_pct = 0;
+  for (var b = 0; b < NB; b++) {
+    var band_mid = (breaks[b] + breaks[b + 1]) / 2;
+    if (band_mid >= latest_close) {
+      profit_pct += cp[b];
+    } else {
+      loss_pct += cp[b];
+    }
+  }
+  
+  // 计算筹码集中度（前三大区间占比）
+  var sorted_cp = cp.slice().sort(function(a, b) { return b - a; });
+  var concentration = sorted_cp.slice(0, 3).reduce(function(a, b) { return a + b; }, 0);
+  
+  return {
+    profit_pct: profit_pct.toFixed(1),
+    loss_pct: loss_pct.toFixed(1),
+    concentration: concentration.toFixed(1)
+  };
+}
+
+function updateStats(stats) {
+  document.getElementById('profitPct').textContent = stats.profit_pct + '%';
+  document.getElementById('lossPct').textContent = stats.loss_pct + '%';
+  document.getElementById('concentration').textContent = stats.concentration + '%';
 }
 
 function updateBothPanels(idx) {
@@ -228,7 +487,9 @@ function updateBothPanels(idx) {
     var ld_prev2 = L[li_prev2], lc_prev2 = CP[li_prev2];
     var bands_prev2 = [];
     for (var b = curBandMin; b <= curBandMax; b++) {
-      bands_prev2.push({l: BL[b], v: CB[b][li_prev2], c: LC[b], idx: b});
+      var band_mid = (BREAKS[b] + BREAKS[b + 1]) / 2;
+      var is_profit = band_mid >= lc_prev2;
+      bands_prev2.push({l: BL[b], v: CB[b][li_prev2], c: is_profit ? '#4ade80' : '#f87171', idx: b});
     }
     bands_prev2.sort(function(a, b) { return a.idx - b.idx; });
     var h_prev2 = '<div class=tt-date>' + ld_prev2 + '</div>';
@@ -250,7 +511,9 @@ function updateBothPanels(idx) {
     var ld_prev1 = L[li_prev1], lc_prev1 = CP[li_prev1];
     var bands_prev1 = [];
     for (var b = curBandMin; b <= curBandMax; b++) {
-      bands_prev1.push({l: BL[b], v: CB[b][li_prev1], c: LC[b], idx: b});
+      var band_mid = (BREAKS[b] + BREAKS[b + 1]) / 2;
+      var is_profit = band_mid >= lc_prev1;
+      bands_prev1.push({l: BL[b], v: CB[b][li_prev1], c: is_profit ? '#4ade80' : '#f87171', idx: b});
     }
     bands_prev1.sort(function(a, b) { return a.idx - b.idx; });
     var h_prev1 = '<div class=tt-date>' + ld_prev1 + '</div>';
@@ -269,7 +532,9 @@ function updateBothPanels(idx) {
   // 显示当天的筹码分布（最右侧）
   var bands = [];
   for (var b = curBandMin; b <= curBandMax; b++) {
-    bands.push({l: BL[b], v: CB[b][li], c: LC[b], idx: b});
+    var band_mid = (BREAKS[b] + BREAKS[b + 1]) / 2;
+    var is_profit = band_mid >= lc;
+    bands.push({l: BL[b], v: CB[b][li], c: is_profit ? '#4ade80' : '#f87171', idx: b});
   }
   bands.sort(function(a, b) { return a.idx - b.idx; });
   var h = '<div class=tt-date>' + ld + '</div>';
@@ -400,7 +665,7 @@ function createCharts() {
         borderWidth: 1.5,
         pointRadius: 0,
         pointHoverRadius: 3,
-        tension: 0.3,
+        tension: 0.25,
         fill: true
       }]
     },
@@ -418,146 +683,122 @@ function createCharts() {
         },
         y: {
           grid: { color: 'rgba(255,255,255,0.04)' },
-          ticks: { color: '#888', font: { size: 10 } },
-          title: { display: true, text: 'OBV', color: '#a78bfa', font: { size: 10 } }
+          ticks: { color: '#777', font: { size: 10 } },
+          title: { display: true, text: 'OBV', color: '#777', font: { size: 10 } }
         }
       }
     }
   });
   
-  // 添加鼠标离开事件
-  document.getElementById('c1').addEventListener('mouseleave', function() { updateBothPanels(L.length - 1); });
-  document.getElementById('c2').addEventListener('mouseleave', function() { updateBothPanels(L.length - 1); });
-  
-  // 双击图例恢复全部
-  var allLegs = document.querySelectorAll('.li');
-  for (var i = 0; i < allLegs.length; i++) {
-    allLegs[i].addEventListener('dblclick', function() {
-      hidden = {};
-      var legs = document.querySelectorAll('.li');
-      for (var j = 0; j < legs.length; j++) {
-        legs[j].classList.remove('inactive');
-      }
-      for (var k = 0; k < NB; k++) {
-        c1.data.datasets[k].borderWidth = 1.8;
-      }
-      c1.update('none');
-    });
-  }
-}
-
-function updateCharts() {
-  // 更新c1
-  c1.data.labels = L;
-  for (var i = 0; i < NB; i++) {
-    c1.data.datasets[i].data = CB[i];
-    c1.data.datasets[i].label = BL[i] + ' (percent)';
-    c1.data.datasets[i].borderColor = LC[i];
-  }
-  c1.data.datasets[NB].data = CP;
-  c1.update('none');
-  
-  // 更新c2
-  c2.data.labels = L;
-  c2.data.datasets[0].data = OV;
-  c2.update('none');
-  
-  // 更新面板
-  updateBothPanels(L.length - 1);
-}
-
-function updateLegend() {
+  // 创建图例
   var legendHtml = '';
-  for (var i = NB - 1; i >= 0; i--) {
-    var latestValue = CB[i][CB[i].length - 1];
-    legendHtml += '<div class="li" id="leg' + i + '" onclick="tk(' + i + ')">' +
-                  '<span class="ls" style="background:' + LC[i] + '"></span>' +
-                  '<span class="ll">' + BL[i] + '</span>' +
-                  '<span class="lp">' + latestValue.toFixed(1) + '%</span></div>\n';
+  for (var i = 0; i < NB; i++) {
+    legendHtml += '<div class="li" id="leg' + i + '" onclick="tk(' + i + ')" ondblclick="resetLegend()">';
+    legendHtml += '<span class="ls" style="background:' + LC[i] + '"></span>';
+    legendHtml += '<span class="ll">' + BL[i] + '</span>';
+    legendHtml += '</div>';
   }
   document.getElementById('legend').innerHTML = legendHtml;
-  
-  // 添加双击恢复事件
-  var allLegs = document.querySelectorAll('.li');
-  for (var i = 0; i < allLegs.length; i++) {
-    allLegs[i].addEventListener('dblclick', function() {
-      hidden = {};
-      var legs = document.querySelectorAll('.li');
-      for (var j = 0; j < legs.length; j++) {
-        legs[j].classList.remove('inactive');
-      }
-      for (var k = 0; k < NB; k++) {
-        if (c1 && c1.data && c1.data.datasets[k]) {
-          c1.data.datasets[k].borderWidth = 1.8;
-        }
-      }
-      if (c1) c1.update('none');
-    });
-  }
 }
 
+function resetLegend() {
+  for (var i = 0; i < NB; i++) {
+    delete hidden[i];
+    var el = document.getElementById('leg' + i);
+    if (el) el.classList.remove('inactive');
+    if (c1 && c1.data.datasets[i]) {
+      c1.data.datasets[i].borderWidth = 1.8;
+    }
+  }
+  if (c1) c1.update('none');
+}
+
+// 全局变量：存储完整的历史数据用于筹码计算
+var FULL_DATA = [];
+
 function loadStockData() {
-  var symbol = document.getElementById('stockCode').value.trim().toUpperCase();
+  var symbol = document.getElementById('stockCode').value.toUpperCase().trim();
   if (!symbol) {
     alert('请输入股票代码');
     return;
   }
   
-  var xhr = new XMLHttpRequest();
-  xhr.open('GET', 'http://localhost:5555/api/data?symbol=' + symbol + '&days=365', true);
-  xhr.onload = function() {
-    if (xhr.status === 200) {
-      try {
-        var stockData = JSON.parse(xhr.responseText);
-        
-        if (!stockData || stockData.length === 0) {
-          alert('未找到股票数据');
-          return;
-        }
-        
-        // 提取数据
-        L = stockData.map(function(d) { return d.date; });
-        CP = stockData.map(function(d) { return d.close; });
-        OV = obv(stockData);
-        
-        // 计算筹码分布
-        NB = 10;
-        calculateChipDistribution(stockData, NB);
-        curBandMin = 0;
-        curBandMax = NB - 1;
-        hidden = {};
-        
-        // 更新图例
-        updateLegend();
-        document.getElementById('legendContainer').style.display = 'block';
-        document.getElementById('chartContainer').style.display = 'block';
-        document.getElementById('guide').style.display = 'block';
-        
-        // 如果图表已存在，更新数据；否则创建新图表
-        if (c1 && c2) {
-          updateCharts();
-        } else {
-          createCharts();
-        }
-        
-      } catch (e) {
-        alert('解析数据失败: ' + e.message);
-      }
-    } else {
-      alert('加载数据失败，状态码: ' + xhr.status);
+  // 获取筹码计算的最大天数（用户可配置）
+  var max_calc_days = parseInt(document.getElementById('maxCalcDays').value);
+  
+  // 获取完整的历史数据用于筹码计算
+  fetch('http://localhost:5555/api/data?symbol=' + symbol + '&days=' + max_calc_days)
+  .then(function(response) {
+    if (!response.ok) {
+      throw new Error('网络错误');
     }
-  };
-  xhr.onerror = function() {
-    alert('网络请求失败，请检查服务器是否正常运行');
-  };
-  xhr.send();
+    return response.json();
+  })
+  .then(function(full_data) {
+    if (!full_data || full_data.length === 0) {
+      alert('未找到该股票数据');
+      return;
+    }
+    
+    // 保存完整历史数据
+    FULL_DATA = full_data;
+    
+    // 获取显示天数（用户选择的时间范围）
+    var display_days = parseInt(document.getElementById('displayDays').value);
+    
+    // 确定显示范围（取最后display_days天）
+    var start_idx = Math.max(0, full_data.length - display_days);
+    var display_data = full_data.slice(start_idx);
+    
+    // 清空之前的图表
+    if (c1) { c1.destroy(); c1 = null; }
+    if (c2) { c2.destroy(); c2 = null; }
+    
+    // 提取显示数据
+    L = display_data.map(function(d) { return d.date; });
+    CP = display_data.map(function(d) { return d.close; });
+    OV = obv(display_data);
+    
+    // 获取参数
+    NB = parseInt(document.getElementById('bandCount').value);
+    var method = document.getElementById('methodSelect').value;
+    var decay_factor = parseFloat(document.getElementById('decayFactor').value);
+    
+    // 使用完整历史数据计算筹码分布（应用时间衰减）
+    var result = calculateChipDistribution(full_data, NB, method, decay_factor);
+    
+    // 截取显示范围内的筹码分布数据
+    CB = CB.map(function(band_data) {
+      return band_data.slice(start_idx);
+    });
+    
+    // 计算统计指标（使用完整数据）
+    var stats = calculateStats(full_data, result.breaks, result.latest_close);
+    
+    // 更新统计面板
+    document.getElementById('statsContainer').style.display = 'flex';
+    updateStats(stats);
+    
+    // 显示图表
+    document.getElementById('legendContainer').style.display = 'block';
+    document.getElementById('chartContainer').style.display = 'block';
+    document.getElementById('guide').style.display = 'block';
+    
+    // 创建图表
+    createCharts();
+    updateBothPanels(L.length - 1);
+  })
+  .catch(function(error) {
+    console.error('加载数据失败:', error);
+    alert('加载数据失败: ' + error.message);
+  });
 }
 
-// 页面加载时自动读取URL参数并加载数据
+// 页面加载时自动加载URL参数中的股票
 document.addEventListener('DOMContentLoaded', function() {
   var symbol = getUrlParam('symbol');
   if (symbol) {
-    document.getElementById('stockCode').value = symbol.toUpperCase();
+    document.getElementById('stockCode').value = symbol;
     loadStockData();
   }
 });

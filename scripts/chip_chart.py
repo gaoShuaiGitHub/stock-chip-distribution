@@ -61,7 +61,7 @@ def anomalies(data, vr=2.5, pc=0.08):
                 "atype":("放量暴涨" if pc2>pc else "放量暴跌" if pc2<-pc else "异常放量")})
     return res
 
-def chip(data, n=10, method="equal_interval"):
+def chip(data, n=10, method="equal_interval", decay_factor=1.0):
     import numpy as np
     
     # 计算最高价和最低价
@@ -93,10 +93,10 @@ def chip(data, n=10, method="equal_interval"):
         log_ah = np.log(ah)
         breaks = np.exp(np.linspace(log_al, log_ah, n+1))
     elif method == "volume_weighted":
-        # 成交量加权划分
+        # 成交量加权划分（推荐）
         price_volume = []
         for bar in data:
-            if bar["high"] != bar["low"]:
+            if bar["high"] != bar["low"] and bar["volume"] > 0:
                 # 为每个交易日生成价格点，权重为成交量
                 price_points = np.linspace(bar["low"], bar["high"], 100)
                 volume_weights = np.full_like(price_points, bar["volume"] / 100)
@@ -104,7 +104,19 @@ def chip(data, n=10, method="equal_interval"):
         
         if price_volume:
             prices, weights = zip(*price_volume)
-            breaks = np.percentile(prices, np.linspace(0, 100, n+1), weights=weights, method='inverted_cdf')
+            total_weight = sum(weights)
+            breaks = [al]
+            target_weight = 0
+            current_weight = 0
+            sorted_pairs = sorted(price_volume, key=lambda x: x[0])
+            for price, weight in sorted_pairs:
+                current_weight += weight
+                if current_weight >= target_weight + total_weight / n:
+                    breaks.append(price)
+                    target_weight += total_weight / n
+            while len(breaks) <= n:
+                breaks.append(ah)
+            breaks = breaks[:n+1]
         else:
             breaks = np.linspace(al, ah, n+1)
     elif method == "standard_deviation":
@@ -125,17 +137,22 @@ def chip(data, n=10, method="equal_interval"):
         # 默认等距划分
         breaks = np.linspace(al, ah, n+1)
     
-    # 计算每个交易日在各区间的成交量
-    for bar in data:
+    # 计算每个交易日在各区间的成交量（带时间衰减）
+    for i, bar in enumerate(data):
         h, l, vol = bar["high"], bar["low"], bar["volume"]
         bar["bands"] = [0] * n
-        if h != l:
+        
+        # 时间衰减因子（远期数据权重降低）
+        days_ago = len(data) - 1 - i
+        decay = np.power(decay_factor, days_ago)
+        
+        if h != l and vol > 0:
             vp = vol / (h - l)
             for b in range(n):
                 lo, hi = breaks[b], breaks[b+1]
                 ol, oh = max(lo, l), min(hi, h)
                 if ol < oh:
-                    bar["bands"][b] = vp * (oh - ol)
+                    bar["bands"][b] = vp * (oh - ol) * decay
     
     # 计算累计筹码和百分比
     cum = [0] * n
@@ -145,7 +162,12 @@ def chip(data, n=10, method="equal_interval"):
         tot = sum(cum)
         bar["cp"] = [c / tot * 100 if tot else 0 for c in cum]
     
-    return data, al, ah, breaks
+    # 计算筹码集中度指标
+    latest_cp = data[-1]["cp"]
+    sorted_cp = sorted(latest_cp, reverse=True)
+    concentration = sum(sorted_cp[:3])  # 前三大区间占比之和
+    
+    return data, al, ah, breaks, concentration
 
 CSS = """* { margin: 0; padding: 0; box-sizing: border-box; }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0e1a; color: #e0e0e0; padding: 20px; max-width: 1400px; margin: 0 auto; }
@@ -444,7 +466,7 @@ c1.update('none');
     )
     return js
 
-def write_html(data, symbol, al, ah, breaks, anomalies, n_bands, method, outpath):
+def write_html(data, symbol, al, ah, breaks, anomalies, n_bands, method, outpath, concentration=0):
     dates  = [x["date"]  for x in data]
     closes = [round(x["close"],2) for x in data]
     obvs   = [int(round(x["obv"])) for x in data]
@@ -659,8 +681,8 @@ def main():
     methods = ["equal_interval", "equal_frequency", "logarithmic", "volume_weighted", "standard_deviation"]
     for method in methods:
         data_copy = data.copy()
-        data_copy,al,ah,breaks=chip(data_copy,10,method)
+        data_copy,al,ah,breaks,concentration=chip(data_copy,10,method,decay_factor=0.98)
         ofn=a.output or sym.replace(".US","" )+"_chip_"+method+".html"
-        write_html(data_copy,sym.replace(".US","").replace(".HK","").replace(".SS","").replace(".SZ",""),al,ah,breaks,ano,10,method,ofn)
+        write_html(data_copy,sym.replace(".US","").replace(".HK","").replace(".SS","").replace(".SZ",""),al,ah,breaks,ano,10,method,ofn,concentration)
 
 if __name__=="__main__": main()
